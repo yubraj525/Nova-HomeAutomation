@@ -1,0 +1,105 @@
+import wave
+import websockets
+
+from Process_audio import process_audio
+from VAD_Detection import detect_speech
+from config import CHANNELS, SAMPLE_WIDTH, SAMPLE_RATE
+import asyncio
+import json
+import websockets
+import webrtcvad
+import numpy as np
+import wave
+from collections import deque
+from save_audio import save_audio
+
+
+CHUNK_SIZE = 1024 # Larger chunks are more efficient for Wi-Fi
+AUDIO_FILE = "response.wav"
+
+ws = None
+clients = set()
+RATE = 16000
+FRAME_MS = 20
+FRAME_SIZE = int(RATE * FRAME_MS / 1000)
+
+vad = webrtcvad.Vad(3)
+
+VOLUME_THRESHOLD = 600
+SPEECH_CONFIRM_FRAMES = 5
+SILENCE_LIMIT = int(2000 / FRAME_MS)
+
+async def handle_client(websocket):
+    global ws
+    ws = websocket
+    clients.add(websocket)
+
+    print("ESP32 connected!")
+    print(f"Total clients: {len(clients)}")
+
+    try:
+     
+        async for message in websocket:
+            if(message == "play_test"):
+                  await stream_audio(websocket)
+            # process incoming audio frames
+            await detect_speech(message)
+
+    except websockets.exceptions.ConnectionClosed:
+        print("ESP disconnected")
+
+    finally:
+        clients.discard(websocket)
+
+
+async def send_websocket_message(websocket, message):
+    try:
+        await websocket.send(json.dumps(message))
+        print(f"Sent: {message}")
+    except websockets.exceptions.ConnectionClosed:
+        print("Client disconnected while sending!")
+
+
+async def broadcast(data):
+    for client in clients:
+        try:
+            print(f"Broadcasting to {client.remote_address}: {data}")
+            await client.send(json.dumps(data))
+        except websockets.exceptions.ConnectionClosed:
+            clients.discard(client)  
+            print("Removed disconnected client!")
+
+
+# def save_wav(audio_bytes, filename="received_audio.wav"):
+#     with wave.open(filename, "wb") as wf:
+#         wf.setnchannels(CHANNELS)
+#         wf.setsampwidth(SAMPLE_WIDTH)
+#         wf.setframerate(SAMPLE_RATE)
+#         wf.writeframes(audio_bytes)
+#     print(f"Audio saved → {filename}")
+
+def get_WSconnection():
+    return ws
+
+
+async def stream_audio(websocket):
+    print("▶ Streaming audio...")
+
+    # Tell ESP to start playback
+    await websocket.send("audio_start")
+
+    with open(AUDIO_FILE, "rb") as f:
+        # 🔥 Skip WAV header (44 bytes)
+        f.seek(44)
+
+        while True:
+            chunk = f.read(CHUNK_SIZE)
+            if not chunk:
+                break
+
+            await websocket.send(chunk)
+            await asyncio.sleep(0.01)  # pacing (20ms)
+
+    # Tell ESP playback finished
+    await websocket.send("audio_end")
+    print("✅ Audio finished")
