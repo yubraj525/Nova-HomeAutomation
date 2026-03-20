@@ -1,8 +1,9 @@
 import wave
 import websockets
 
-from Process_audio import process_audio
+
 from VAD_Detection import detect_speech
+from groqLLm import groqLLM
 from config import CHANNELS, SAMPLE_WIDTH, SAMPLE_RATE
 import asyncio
 import json
@@ -15,7 +16,7 @@ from save_audio import save_audio
 
 
 CHUNK_SIZE = 512 # Larger chunks are more efficient for Wi-Fi
-AUDIO_FILE = "lighton.wav"  # For testing streaming to ESP32
+AUDIO_FILE = "response.wav"  # For testing streaming to ESP32
 ws = None
 clients = set()
 RATE = 24000
@@ -40,7 +41,7 @@ async def handle_client(websocket):
      
         async for message in websocket:
             if(message == "play_test"):
-                  await stream_audio(websocket)
+                  await stream_audio()
             if(message == "Hello from ESP"):
                     print("Received greeting from ESP!")
             # process incoming audio frames
@@ -85,7 +86,8 @@ def get_WSconnection():
     return ws
 
 
-async def stream_audio(websocket):
+async def stream_audio():
+    websocket = get_WSconnection()
     print("▶ Streaming audio...")
 
     # Tell ESP to start playback

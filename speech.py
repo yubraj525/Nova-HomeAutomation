@@ -68,11 +68,12 @@ async def _tts_async(text, emotion="sad"):
             pitch="+5Hz",
             volume="+20%"
         )
-        await tts.save("response.mp3")
-        _play_blocking("response.mp3")
-        time.sleep(0.2)
-        # if os.path.exists("response.mp3"):
-        #     os.remove("response.mp3")
+        await tts.save("response.wav")
+        # //this is to play in server side, not on client!
+        # _play_blocking("response.wav")
+        # time.sleep(0.2)
+        # if os.path.exists("response.wav"):
+        #     os.remove("response.wav")
     else:
         # Kokoro for English — natural!
         style = EMOTIONS.get(emotion, EMOTIONS["sad"])
@@ -83,8 +84,8 @@ async def _tts_async(text, emotion="sad"):
             lang="en-us"
         )
         sf.write("response.wav", samples, sr)
-        _play_blocking("response.wav")
-        time.sleep(0.2)
+        # _play_blocking("response.wav")
+        # time.sleep(0.2)
         # if os.path.exists("response.wav"):
         #     os.remove("response.wav")
 
