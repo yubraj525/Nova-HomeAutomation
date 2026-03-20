@@ -14,12 +14,12 @@ from collections import deque
 from save_audio import save_audio
 
 
-CHUNK_SIZE = 1024 # Larger chunks are more efficient for Wi-Fi
-AUDIO_FILE = "response.wav"
+CHUNK_SIZE = 512 # Larger chunks are more efficient for Wi-Fi
+AUDIO_FILE = "test_kokoro.wav"
 
 ws = None
 clients = set()
-RATE = 16000
+RATE = 24000
 FRAME_MS = 20
 FRAME_SIZE = int(RATE * FRAME_MS / 1000)
 
@@ -42,8 +42,12 @@ async def handle_client(websocket):
         async for message in websocket:
             if(message == "play_test"):
                   await stream_audio(websocket)
+            if(message == "Hello from ESP"):
+                    print("Received greeting from ESP!")
             # process incoming audio frames
-            await detect_speech(message)
+            
+            if isinstance(message, bytes):
+                 await detect_speech(message)
 
     except websockets.exceptions.ConnectionClosed:
         print("ESP disconnected")
@@ -98,8 +102,9 @@ async def stream_audio(websocket):
                 break
 
             await websocket.send(chunk)
-            await asyncio.sleep(0.01)  # pacing (20ms)
+            await asyncio.sleep(0.01)  # correct pacing
 
     # Tell ESP playback finished
+    await asyncio.sleep(2)  # correct pacing
     await websocket.send("audio_end")
     print("✅ Audio finished")

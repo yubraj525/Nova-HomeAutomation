@@ -19,46 +19,46 @@ async def process_audio():
     response = await groqLLM(text)
     print(f"Parsed response: {response}")
 
-    reply = response.get('response', '')  # get reply for all cases!
-    print(f"Nova says: {reply}")
+    # reply = response.get('response', '')  # get reply for all cases!
+    # print(f"Nova says: {reply}")
 
-    if response['type'] == 'command':
-        target = response.get('target')
-        action = response.get('action')
+    # if response['type'] == 'command':
+    #     target = response.get('target')
+    #     action = response.get('action')
 
-        if target == 'music':
-            if action == 'play':
-                song = response.get('song', text)
-                # speak first, then play music!
-                if reply:
-                    await text_to_speech(reply)
-                print(f"Playing: {song}")
-                await download_and_play(song)
+    #     if target == 'music':
+    #         if action == 'play':
+    #             song = response.get('song', text)
+    #             # speak first, then play music!
+    #             if reply:
+    #                 await text_to_speech(reply)
+    #             print(f"Playing: {song}")
+    #             await download_and_play(song)
 
-            elif action == 'pause':
-                pause_music()
-                if reply:
-                    await text_to_speech(reply)
+    #         elif action == 'pause':
+    #             pause_music()
+    #             if reply:
+    #                 await text_to_speech(reply)
 
-            elif action == 'resume':
-                resume_music()
-                if reply:
-                    await text_to_speech(reply)
+    #         elif action == 'resume':
+    #             resume_music()
+    #             if reply:
+    #                 await text_to_speech(reply)
 
-            elif action == 'stop':
-                stop_music()
-                if reply:
-                    await text_to_speech(reply)
+    #         elif action == 'stop':
+    #             stop_music()
+    #             if reply:
+    #                 await text_to_speech(reply)
 
-        else:
-            # light, fan etc
-            result = handle_command(response)
-            from websocket import broadcast
-            await broadcast({"type": "command", "payload": result})
-            # speak confirmation!
-            if reply:
-                await text_to_speech(reply)
+    #     else:
+    #         # light, fan etc
+    #         result = handle_command(response)
+    #         from websocket import broadcast
+    #         await broadcast({"type": "command", "payload": result})
+    #         # speak confirmation!
+    #         if reply:
+    #             await text_to_speech(reply)
 
-    elif response['type'] == 'query':
-        print(f"Nova says: {reply}")
-        await text_to_speech(reply)
+    # elif response['type'] == 'query':
+    #     print(f"Nova says: {reply}")
+    #     await text_to_speech(reply)
