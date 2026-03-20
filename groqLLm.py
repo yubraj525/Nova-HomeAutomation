@@ -1,3 +1,4 @@
+import os
 import time
 from groq import Groq
 from dotenv import load_dotenv
@@ -41,7 +42,10 @@ from dotenv import load_dotenv
 
 import time
 
-def groqLLM(query):
+load_dotenv()  # Load environment variables from .env file
+client = Groq(api_key=os.getenv("GROQ"))
+
+async def groqLLM(query):
     start_time = time.time()
     first_token_time = None
     token_count = 0

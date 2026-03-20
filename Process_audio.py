@@ -21,6 +21,7 @@ async def process_audio():
 
     # reply = response.get('response', '')  # get reply for all cases!
     # print(f"Nova says: {reply}")
+    await text_to_speech(response)
 
     # if response['type'] == 'command':
     #     target = response.get('target')

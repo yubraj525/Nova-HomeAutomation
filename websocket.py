@@ -15,8 +15,7 @@ from save_audio import save_audio
 
 
 CHUNK_SIZE = 512 # Larger chunks are more efficient for Wi-Fi
-AUDIO_FILE = "test_kokoro.wav"
-
+AUDIO_FILE = "lighton.wav"  # For testing streaming to ESP32
 ws = None
 clients = set()
 RATE = 24000
