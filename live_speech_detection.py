@@ -1,9 +1,10 @@
 import asyncio
-import websockets
-import webrtcvad
-import numpy as np
 import wave
 from collections import deque
+
+import numpy as np
+import webrtcvad
+import websockets
 
 RATE = 16000
 FRAME_MS = 20
@@ -87,7 +88,7 @@ async def handler(ws):
 
 def save_audio(audio):
 
-    wf = wave.open("speech.wav","wb")
+    wf = wave.open(" .wav","wb")
 
     wf.setnchannels(1)
     wf.setsampwidth(2)

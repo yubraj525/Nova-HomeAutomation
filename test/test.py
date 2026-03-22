@@ -1,10 +1,13 @@
-import os
 import asyncio
-from google import genai
-import time 
+import os
+import time
+
 from dotenv import load_dotenv
+from google import genai
+
 load_dotenv()
 import json
+
 
 async def generate_response_from_text(transcribed_text, conversation_history=[]):
     """

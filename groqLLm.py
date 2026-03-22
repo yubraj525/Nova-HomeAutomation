@@ -1,14 +1,9 @@
 import os
-import time
-from groq import Groq
-from dotenv import load_dotenv
-
 
 # def test_latency():
 #     start_time = time.time()
 #     first_token_time = None
 #     full_response = ""
-
 #     stream = client.chat.completions.create(
 #         model="llama3-8b-8192",
 #         messages=[
@@ -16,31 +11,26 @@ from dotenv import load_dotenv
 #         ],
 #         stream=True
 #     )
-
 #     print("⏳ Request sent...")
-
 #     for chunk in stream:
 #         if chunk.choices[0].delta.content:
 #             if first_token_time is None:
 #                 first_token_time = time.time()
 #                 print(f"⚡ First token received at: {first_token_time - start_time:.3f} sec")
-
 #             token = chunk.choices[0].delta.content
 #             full_response += token
 #             print(token, end="", flush=True)
-
 #     end_time = time.time()
-
 #     print("\n\n📊 Results:")
 #     print(f"TTFT (first token): {first_token_time - start_time:.3f} sec")
 #     print(f"Total time: {end_time - start_time:.3f} sec")
 #     print(f"Response length: {len(full_response)} chars")
-
 # if __name__ == "__main__":
 #     test_latency()
-
-
 import time
+
+from dotenv import load_dotenv
+from groq import Groq
 
 load_dotenv()  # Load environment variables from .env file
 client = Groq(api_key=os.getenv("GROQ"))

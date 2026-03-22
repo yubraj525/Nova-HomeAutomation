@@ -1,8 +1,8 @@
 import wave
 
+import numpy as np
 import pyaudio
 import webrtcvad
-import numpy as np
 
 # Settings
 RATE = 16000

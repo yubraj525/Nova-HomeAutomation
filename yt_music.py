@@ -1,8 +1,7 @@
-import subprocess
-import pygame
-import asyncio
 import os
-from speech  import play_audio
+import subprocess
+
+from speech import play_audio
 
 COOKIES = r"C:\Users\yubra\OneDrive\Documents\Development\Voice-assitance-py\cookies.txt"
 async def download_and_play(query):

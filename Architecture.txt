@@ -1,0 +1,16 @@
+
+#     User speaks
+#    ↓
+# ESP32 + INMP441
+#    ↓
+# Audio sent to server (HTTP)
+#    ↓
+# Server converts speech → text
+#    ↓
+# Local AI model via Ollama
+#    ↓
+# AI returns structured response
+#    ↓
+# WebSocket sends command to ESP32
+#    ↓
+# ESP32 performs action (light on/off etc)

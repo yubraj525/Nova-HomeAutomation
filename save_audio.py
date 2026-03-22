@@ -2,7 +2,6 @@
 import wave
 
 
-    
 def save_audio(audio):
 
     wf = wave.open("speech.wav","wb")

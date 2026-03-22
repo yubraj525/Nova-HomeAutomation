@@ -1,9 +1,10 @@
 # nova_local.py
-import ollama
+import asyncio
 import json
 import re
-import asyncio
 import time
+
+import ollama
 
 # Global conversation history
 conversation_history = []
@@ -74,7 +75,7 @@ For queries:
 {"type":"query","response":"friendly natural reply"}
 
 - Always include type and response.
-- Never output anything outside the JSON object.
+- Never output anything outside the JSON object ensure out put dont exceed than maximum two line as well to make a communication you can inculde a convo word as you want t know morw acc to context you can say further context .
 """
     # Add last conversation history
     for msg in conversation_history[-10:]:

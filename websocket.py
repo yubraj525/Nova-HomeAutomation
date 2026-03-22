@@ -1,19 +1,10 @@
-import wave
-import websockets
-
-
-from VAD_Detection import detect_speech
-from groqLLm import groqLLM
-from config import CHANNELS, SAMPLE_WIDTH, SAMPLE_RATE
 import asyncio
 import json
-import websockets
-import webrtcvad
-import numpy as np
-import wave
-from collections import deque
-from save_audio import save_audio
 
+import webrtcvad
+import websockets
+
+from VAD_Detection import detect_speech
 
 CHUNK_SIZE = 512 # Larger chunks are more efficient for Wi-Fi
 AUDIO_FILE = "response.wav"  # For testing streaming to ESP32
@@ -109,3 +100,4 @@ async def stream_audio():
     await asyncio.sleep(2)  # correct pacing
     await websocket.send("audio_end")
     print("✅ Audio finished")
+    await websocket.send("start_stream")  # trigger test playback on ESP

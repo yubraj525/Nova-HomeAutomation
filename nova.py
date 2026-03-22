@@ -1,25 +1,11 @@
 import asyncio
-from email.mime import text
-import os
-from local_ollama import generate_local
-from yt_music import download_and_play
-import websockets
-from dotenv import load_dotenv
-import uvicorn
-from fastapi import FastAPI, status
-from fastapi.responses import JSONResponse
-from fastapi import Request
-import wave
-from google import genai
-from config import GEMINI_API_KEY
-from response import generate_response_from_text
-from whisper import transcribe_audio
-from speech import text_to_speech,pause_music,resume_music,stop_music
-from config import PORT_API, PORT_WS
-from speech import play_audio
-from websocket import handle_client
 
-from process_transcipt import match_command,handle_command
+import uvicorn
+import websockets
+from fastapi import FastAPI
+
+from config import PORT_API, PORT_WS
+from websocket import handle_client
 
 # Load model once at startup
 

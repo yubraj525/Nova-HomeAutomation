@@ -1,4 +1,5 @@
 import asyncio
+
 import websockets
 
 CHUNK_SIZE = 1024 # Larger chunks are more efficient for Wi-Fi

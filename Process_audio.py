@@ -1,13 +1,13 @@
 
+
+from local_ollama import generate_local_async
 from process_transcipt import handle_command
+from speech import pause_music, resume_music, stop_music, text_to_speech
+
 # from test.ws_stream_audio import stream_audio
 from whisper import transcribe_audio
-from speech import text_to_speech,pause_music,resume_music,stop_music
-from local_ollama import generate_local_async
-from groqLLm import groqLLM
 from yt_music import download_and_play
-from response import generate_response_from_text
-import wave
+
 
 async def process_audio():
     text = transcribe_audio()

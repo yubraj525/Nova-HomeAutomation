@@ -1,9 +1,10 @@
 
 import os
-import asyncio
-from google import genai
-import time 
+import time
+
 from dotenv import load_dotenv
+from google import genai
+
 load_dotenv()
 import json
 

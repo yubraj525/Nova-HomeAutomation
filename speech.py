@@ -1,13 +1,13 @@
 # speech.py — replace text_to_speech with Kokoro!
 
-import os
-import time
-import pygame
-import edge_tts
 import asyncio
+import time
 from concurrent.futures import ThreadPoolExecutor
-from kokoro_onnx import Kokoro
+
+import edge_tts
+import pygame
 import soundfile as sf
+from kokoro_onnx import Kokoro
 
 executor = ThreadPoolExecutor()
 music_paused = False

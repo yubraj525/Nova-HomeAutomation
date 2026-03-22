@@ -21,8 +21,8 @@ __pycache__/
 *.env
 
 *.log
-*.txt
-cookies.txt
+# *.txt
+# cookies.txt
 
 # ----------------------
 # 🧠 AI / Models / Weights
