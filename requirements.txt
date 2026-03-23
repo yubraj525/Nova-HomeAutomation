@@ -13,3 +13,12 @@ soundfile==0.13.1
 uvicorn==0.42.0
 webrtcvad_wheels==2.0.13
 websockets==16.0
+
+groq
+google-genai
+webractvad
+fastapi
+dotenv
+yt_dlp
+edge_tts
+kokoro_onnx
