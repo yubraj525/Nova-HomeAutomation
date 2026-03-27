@@ -93,6 +93,8 @@ async def text_to_speech(text, emotion="sad"):
     print("Generating speech...")
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(executor, _tts_blocking, text, emotion)
+    from websocket import stream_audio
+    await stream_audio()
 
 
 # ─── MUSIC CONTROLS ─────────────────────────────────────────

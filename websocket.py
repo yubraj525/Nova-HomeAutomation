@@ -6,8 +6,8 @@ import websockets
 
 from VAD_Detection import detect_speech
 
-CHUNK_SIZE = 512 # Larger chunks are more efficient for Wi-Fi
-AUDIO_FILE = "response.wav"  # For testing streaming to ESP32
+CHUNK_SIZE = 1024 # Larger chunks are more efficient for Wi-Fi
+  # For testing streaming to ESP32
 ws = None
 clients = set()
 RATE = 24000
@@ -77,7 +77,7 @@ def get_WSconnection():
     return ws
 
 
-async def stream_audio():
+async def stream_audio(AUDIO_FILE="response.wav"):
     websocket = get_WSconnection()
     print("▶ Streaming audio...")
 
@@ -92,6 +92,9 @@ async def stream_audio():
             chunk = f.read(CHUNK_SIZE)
             if not chunk:
                 break
+            
+            if len(chunk) % 2 != 0:
+               chunk += b'\x00'
 
             await websocket.send(chunk)
             await asyncio.sleep(0.01)  # correct pacing
@@ -101,3 +104,32 @@ async def stream_audio():
     await websocket.send("audio_end")
     print("✅ Audio finished")
     await websocket.send("start_stream")  # trigger test playback on ESP
+
+
+async def stream_music(AUDIO_FILE="song.wav"):
+    websocket = get_WSconnection()
+    print("▶ Streaming audio...")
+
+    # Tell ESP to start playback
+    await websocket.send("audio_start")
+
+    with open(AUDIO_FILE, "rb") as f:
+        # 🔥 Skip WAV header (44 bytes)
+        f.seek(44)
+
+        while True:
+            chunk = f.read(CHUNK_SIZE)
+            if not chunk:
+                break
+            
+            if len(chunk) % 2 != 0:
+               chunk += b'\x00'
+
+            await websocket.send(chunk)
+            await asyncio.sleep(0.01)  # correct pacing
+
+    # Tell ESP playback finished
+    await asyncio.sleep(2)  # correct pacing
+    await websocket.send("audio_end")
+   
+
