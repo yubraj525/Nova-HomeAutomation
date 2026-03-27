@@ -3,7 +3,7 @@ import asyncio
 import uvicorn
 import websockets
 from fastapi import FastAPI
-
+from yt_music import download_and_play
 from config import PORT_API, PORT_WS
 from websocket import handle_client
 
@@ -96,11 +96,12 @@ async def main():
     ws_server = websockets.serve(handle_client, "0.0.0.0", PORT_WS)
 
     # Start FastAPI server
-    api_server = uvicorn.Server(uvicorn.Config(app, host="10.0.3.1", port=PORT_API))
+    api_server = uvicorn.Server(uvicorn.Config(app, host="192.168.1.75", port=PORT_API))
 
 
     print(f"WebSocket running on port {PORT_WS}")
     print(f"API running on port {PORT_API}")
+    # await download_and_play("never gonna give you up")
 
 
     async with ws_server:

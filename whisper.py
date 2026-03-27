@@ -8,7 +8,7 @@ load_dotenv()
 
 
 # def transcribe_audio():
-#     print("Transcribing")
+#     print("Transcribing")r
 #     whisper_model = WhisperModel("small", device="cpu", compute_type="int8")
 #     segments, _ = whisper_model.transcribe("speech.wav", language="en")
 #     text = " ".join([seg.text for seg in segments])
@@ -29,4 +29,5 @@ def transcribe_audio(filepath="speech.wav"):
     text = transcription.text
     print(f"Transcribed: {text}")
     return text
+
 
