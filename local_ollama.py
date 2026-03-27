@@ -321,7 +321,7 @@ async def generate_local_async(text):
 if __name__ == "__main__":
 
     async def main():
-        msg =  " what is gravity mean by"
+        msg = "play a dong  by arijit singh"
 
         result = await generate_local_async(msg)
 

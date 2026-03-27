@@ -3,7 +3,7 @@
 from local_ollama import generate_local_async
 from process_transcipt import handle_command
 from speech import pause_music, resume_music, stop_music, text_to_speech
-from groqLLm import groqLLM
+from groqLLm import groq_llm_json
 # from test.ws_stream_audio import stream_audio
 from whisper import transcribe_audio
 from yt_music import download_and_play
@@ -16,12 +16,13 @@ async def process_audio():
         print("Empty or invalid transcription — skipping!")
         return
     
-    response = await groqLLM(text)
+    response = await groq_llm_json(text)
     print(f"Parsed response: {response}")
-    await text_to_speech(response)  # speak the response first!
+           
 
-    # reply = response.get('response', '')  # get reply for all cases!
-    # print(f"Nova says: {reply}")
+    reply = response.get('response', '')  # get reply for all cases!
+    print(f"Nova says: {reply}")
+    await text_to_speech(reply)
 
 
     # if response['type'] == 'command':
