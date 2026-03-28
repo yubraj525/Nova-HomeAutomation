@@ -56,7 +56,7 @@ async def download_and_play(query):
     audio = audio.set_frame_rate(24000)
 
 # 3. Set Sample Width to 2 bytes (16-bit)
-    audio = audio.set_sample_width(2)
+    audio = audio.set_sample_width(2) 
 
 # Export as WAV
     audio.export("song.wav", format="wav")

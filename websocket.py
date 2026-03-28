@@ -131,5 +131,6 @@ async def stream_music(AUDIO_FILE="song.wav"):
     # Tell ESP playback finished
     await asyncio.sleep(2)  # correct pacing
     await websocket.send("audio_end")
+    print("song finished")
    
 
