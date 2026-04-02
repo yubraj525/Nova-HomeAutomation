@@ -7,7 +7,7 @@ Nova is a multi-language, voice-enabled AI assistant designed to control home au
 🧠 AI-powered conversational responses
 🔊 Emotion-aware Text-to-Speech (TTS)
 📡 IoT device control (ESP32-based)
-🎵 YouTube music streaming via yt-dlp
+🎵 YouTube music streaming via yt-dlp        
 ⏯️ Media controls: play, pause, resume, stop
 ⚡ Real-time automation commands
 🧱 System Architecture
@@ -52,7 +52,7 @@ pygame.mixer.init()
 pygame.mixer.music.load(url)
 pygame.mixer.music.play()
 
-⚠️ Tip: For stable streaming, consider using python-vlc or ffmpeg for direct URL playback.
+⚠️ Tip: For stable streaming, consider using python-vlc or ffmpeg for direct URL playback.  if you can set it up here a follow up inlk https://youtu.be/cKVJWdeFMa0?si=zQi646kqhHfM1fZ5
 
 🔧 Supported Commands
 Play music: "Play music", "Play Arijit Singh songs", "Play Nepali songs"
