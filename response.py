@@ -80,7 +80,7 @@ For queries:
 {{"type":"query","response":"friendly natural reply"}}
 
 Always include type and response.
-Never output anything outside the JSON object.
+Never output anything outside the JSON object. and esnure reponse is not just ans it will be a meaningful  and well grammed to end context and bidirectional conversation as well expressing some emotions as well.
 User message: "{transcribed_text}"
 """
     start_time = time.perf_counter()
