@@ -6,7 +6,7 @@ import websockets
 
 from VAD_Detection import detect_speech
 
-CHUNK_SIZE = 512 # Larger chunks are more efficient for Wi-Fi
+CHUNK_SIZE = 512  # Larger chunks are more efficient for Wi-Fi
 AUDIO_FILE = "response.wav"  # For testing streaming to ESP32
 ws = None
 clients = set()
@@ -20,6 +20,7 @@ VOLUME_THRESHOLD = 600
 SPEECH_CONFIRM_FRAMES = 5
 SILENCE_LIMIT = int(2000 / FRAME_MS)
 
+
 async def handle_client(websocket):
     global ws
     ws = websocket
@@ -29,16 +30,16 @@ async def handle_client(websocket):
     print(f"Total clients: {len(clients)}")
 
     try:
-     
+
         async for message in websocket:
-            if(message == "play_test"):
-                  await stream_audio()
-            if(message == "Hello from ESP"):
-                    print("Received greeting from ESP!")
+            if message == "play_test":
+                await stream_audio()
+            if message == "Hello from ESP":
+                print("Received greeting from ESP!")
             # process incoming audio frames
-            
+
             if isinstance(message, bytes):
-                 await detect_speech(message)
+                await detect_speech(message)
 
     except websockets.exceptions.ConnectionClosed:
         print("ESP disconnected")
@@ -61,7 +62,7 @@ async def broadcast(data):
             print(f"Broadcasting to {client.remote_address}: {data}")
             await client.send(json.dumps(data))
         except websockets.exceptions.ConnectionClosed:
-            clients.discard(client)  
+            clients.discard(client)
             print("Removed disconnected client!")
 
 
@@ -72,6 +73,7 @@ async def broadcast(data):
 #         wf.setframerate(SAMPLE_RATE)
 #         wf.writeframes(audio_bytes)
 #     print(f"Audio saved → {filename}")
+
 
 def get_WSconnection():
     return ws
