@@ -5,7 +5,6 @@ kws--> live streamaudio --> server capture speech part --> transcribe --> proces
 to resolve esp quick restart -- small speaker -- latency removal -- offline -- Nepali 
 
 
-
 #include <Voice_-Assistnce_kws_inferencing.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -66,10 +65,10 @@ static bool debug_nn = false;
 int fileIndex = 1;
 
 // ===================== WIFI & SERVER =====================
-const char* ssid = "scifi_2.4";
+const char* ssid = "Noo";
 const char* password = "88888888";
 
-const char* serverUrlTest = "http://192.168.1.78:3000/api/test";
+const char* serverUrlTest = "http://192.168.1.92:3000/api/test";
 
 // ===================== WEBSOCKET =====================
 WebSocketsClient webSocket;
@@ -243,6 +242,7 @@ void stopPlayback() {
 unsigned long streamStart = 0;
 
 void startStream() {
+      digitalWrite(2,HIGH);
   if (streaming) return;
   Serial.println("[STREAM] Start streaming");
 
@@ -255,7 +255,8 @@ void startStream() {
 void stopStream() {
   if (!streaming) return;
   Serial.println("[STREAM] Stop streaming");
-
+  digitalWrite(2,LOW);
+  delay(50);
   streaming = false;
   startKWS();  // <--- restart KWS after streaming
 }
@@ -263,7 +264,8 @@ void stopStream() {
 void streamFrame() {
   if (!streaming) return;
 
-  if (millis() - streamStart > 15000) {
+
+  if (millis() - streamStart > 10000) {
     stopStream();
     return;
   }
@@ -408,6 +410,7 @@ void listFiles() {
 
 // ===================== SETUP =====================
 void setup() {
+  pinMode(2,OUTPUT);
   Serial.begin(115200);
   delay(1000);
   pinMode(LED_PIN, OUTPUT);
@@ -418,6 +421,7 @@ void setup() {
     Serial.print(".");
   }
   Serial.println("\nWiFi connected!");
+   Serial.println(WiFi.localIP());
 
   if (!SD.begin(SD_CS)) Serial.println("SD Failed");
   else Serial.println("SD OK");
@@ -429,7 +433,7 @@ void setup() {
   else Serial.println("Server test failed");
   http.end();
 
-  webSocket.begin("192.168.1.78", 8080, "/");
+  webSocket.begin("192.168.1.92", 8080, "/");
   webSocket.onEvent(webSocketEvent);
 
   run_classifier_init();
@@ -476,7 +480,11 @@ void loop() {
   String labelLower = label;
   labelLower.toLowerCase();
 
-  if (labelLower == "hey nova") startStream();
+  if (labelLower == "hey nova") 
+  {
+
+    startStream();
+  }
   else {
     delay(PAUSE_AFTER_DETECT_MS);
     inference.buf_ready = 0;
