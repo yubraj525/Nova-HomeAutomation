@@ -1,6 +1,6 @@
 import os
 import subprocess
-
+import asyncio
 from speech import play_audio
 
 COOKIES = r"C:\Users\yubra\OneDrive\Documents\Development\Voice-assitance-py\cookies.txt"
@@ -64,3 +64,16 @@ async def download_and_play(query):
     print("Exported: 24kHz, 16-bit, Mono WAV")
     from websocket import stream_music
     await stream_music("song.wav")
+
+async def main():
+    print("🎵 Music test starting...")
+
+    query = "believer imagine dragons"
+
+    await download_and_play(query)
+
+    print("✅ Done playing song")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
