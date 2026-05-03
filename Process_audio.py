@@ -1,14 +1,18 @@
 
 
+from email.mime import text
+
 from local_ollama import generate_local_async
 from process_transcipt import handle_command
-from speech import pause_music, resume_music, stop_music, text_to_speech
+from speech import pause_music, play_audio, resume_music, stop_music, text_to_speech
 from groqLLm import groq_llm_json
 from test import generate_speech
 # from test.ws_stream_audio import stream_audio
 from whisper import transcribe_audio
 from yt_music import download_and_play
-
+import winsound
+import asyncio
+import os
 
 async def process_audio():
     text = transcribe_audio()
@@ -23,8 +27,13 @@ async def process_audio():
 
     reply = response.get('response', '')  # get reply for all cases!
     print(f"Nova says: {reply}")
-    await generate_speech(reply)
-
+    file = await generate_speech(reply)
+    # await wait_until_stable(file)
+    await play_audio(file)
+    print("Audio playback finished, processing command...")
+    from websocket import get_WSconnection
+    ws = get_WSconnection()
+    ws.send("start_stream")  # trigger next steps on ESP after audio done
 
     # if response['type'] == 'command':
     #     target = response.get('target')

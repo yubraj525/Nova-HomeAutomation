@@ -3,7 +3,7 @@
 import asyncio
 import time
 from concurrent.futures import ThreadPoolExecutor
-
+import os
 import edge_tts
 import pygame
 import soundfile as sf
@@ -51,18 +51,21 @@ def _play_blocking(path):
     print("Done playing!")
 
 
+def wait_for_file(path):
+    print("Waiting for file...")
+
+    while not os.path.exists(path) or os.path.getsize(path) < 1000:
+        time.sleep(0.1)
+
+    print("File ready!")
+
+
 async def play_audio(path):
-    print("Playing audio...")
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     await loop.run_in_executor(executor, _play_blocking, path)
-
-
-# ─── TTS ────────────────────────────────────────────────────
-
-
+    
 def _tts_blocking(text, emotion="sad"):
-    asyncio.run(_tts_async(text, emotion))
-
+    return asyncio.run(_tts_async(text, emotion))
 
 async def _tts_async(text, emotion="sad"):
     temp_file = "temp_response.mp3"
