@@ -96,7 +96,7 @@ async def main():
     ws_server = websockets.serve(handle_client, "0.0.0.0", PORT_WS)
 
     # Start FastAPI server
-    api_server = uvicorn.Server(uvicorn.Config(app, host="192.168.1.78", port=PORT_API))
+    api_server = uvicorn.Server(uvicorn.Config(app, host="192.168.1.70", port=PORT_API))
 
 
     print(f"WebSocket running on port {PORT_WS}")
