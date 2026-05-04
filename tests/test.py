@@ -1,7 +1,7 @@
 import os
 from groq import Groq
 from dotenv import load_dotenv
-from playsound import playsound
+# from playsound import playsound
 # -----------------------------
 # INIT
 # -----------------------------

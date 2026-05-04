@@ -1,7 +1,7 @@
 import os
 import subprocess
 import asyncio
-from speech import play_audio
+from app.tts.tts_engine import play_audio
 
 COOKIES = r"C:\Users\yubra\OneDrive\Documents\Development\Voice-assitance-py\cookies.txt"
 async def download_and_play(query):
@@ -10,8 +10,8 @@ async def download_and_play(query):
         print("No song specified")
         return
 
-    if os.path.exists("song.mp3"):
-        os.remove("song.mp3")
+    if os.path.exists("assets/music/song.mp3"):
+        os.remove("assets/music/song.mp3")
 
     print(f"Searching: {query}")
 
@@ -22,7 +22,7 @@ async def download_and_play(query):
         "-f", "bestaudio/best",
         "-x",
         "--audio-format", "mp3",
-        "-o", "song.mp3",
+        "-o", "assets/music/song.mp3",
         search_query
     ])
 
@@ -35,7 +35,7 @@ async def download_and_play(query):
             "-f", "bestaudio/best",
             "-x",
             "--audio-format", "mp3",
-            "-o", "song.mp3",
+            "-o", "assets/music/song.mp3",
             fallback_query
         ])
         if fallback_result.returncode != 0:
@@ -47,7 +47,7 @@ async def download_and_play(query):
     from pydub import AudioSegment
 
 # Load your source file
-    audio = AudioSegment.from_file("song.mp3")
+    audio = AudioSegment.from_file("assets/music/song.mp3")
 
 # 1. Convert to Mono (1 channel)
     audio = audio.set_channels(1)
@@ -59,11 +59,11 @@ async def download_and_play(query):
     audio = audio.set_sample_width(2) 
 
 # Export as WAV
-    audio.export("song.wav", format="wav")
+    audio.export("assets/music/song.wav", format="wav")
 
     print("Exported: 24kHz, 16-bit, Mono WAV")
-    from websocket import stream_music
-    await stream_music("song.wav")
+    from app.communication.websocket import stream_music
+    await stream_music("assets/music/song.wav")
 
 async def main():
     print("🎵 Music test starting...")

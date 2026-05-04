@@ -18,7 +18,7 @@ load_dotenv()
 client = Groq(api_key=os.getenv("GROQ"))
 
 
-def transcribe_audio(filepath="speech.wav"):
+def transcribe_audio(filepath="data/output_audio/speech.wav"):
     print("Transcribing...")
     with open(filepath, "rb") as audio_file:
         transcription = client.audio.transcriptions.create(
