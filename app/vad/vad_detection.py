@@ -158,9 +158,9 @@ async def detect_speech(audio_data):
             if no_speech_frames > NO_SPEECH_LIMIT:
                 print("No speech detected for 4 seconds → stopping stream")
 
-                from app.communication.websocket import get_WSconnection
-                websocket = get_WSconnection()
-                await websocket.send("stop_stream")
+                from app.communication.websocket import send_websocket_message
+                await send_websocket_message("stop_stream")
+              
 
                 no_speech_frames = 0
                 return
@@ -178,9 +178,8 @@ async def detect_speech(audio_data):
                 audio = b''.join(audio_buffer)
                 save_audio(audio)
 
-                from app.communication.websocket import get_WSconnection
-                websocket = get_WSconnection()
-                await websocket.send("stop_stream")
+                from app.communication.websocket import send_websocket_message
+                await send_websocket_message("stop_stream")
 
                 await process_audio()
 

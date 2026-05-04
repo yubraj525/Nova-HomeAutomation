@@ -9,6 +9,7 @@ import pygame
 import soundfile as sf
 from kokoro_onnx import Kokoro
 from pydub import AudioSegment  # You'll need: pip install pydub
+from config.config import AUDIO_PATH
 
 executor = ThreadPoolExecutor()
 music_paused = False
@@ -60,7 +61,7 @@ def wait_for_file(path):
     print("File ready!")
 
 
-async def play_audio(path):
+async def play_audio(path=AUDIO_PATH):
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(executor, _play_blocking, path)
     
@@ -87,7 +88,7 @@ async def _tts_async(text, emotion="sad"):
         samples, sr = kokoro.create(
             text, voice=style["voice"], speed=style["speed"], lang="en-us"
         )
-        sf.write("data/output_audio/response.wav", samples, sr)
+        sf.write(AUDIO_PATH, samples, sr)
         # _play_blocking("response.wav")
         # time.sleep(0.2)
         # if os.path.exists("response.wav"):
@@ -101,7 +102,7 @@ async def text_to_speech(text, emotion="sad"):
     # this os for play basck in esp 32
     # from app.communication.websocket import stream_audio
     # await stream_audio()
-    play_audio("data/output_audio/response.wav")
+    return AUDIO_PATH
 
 
 # ─── MUSIC CONTROLS ─────────────────────────────────────────
