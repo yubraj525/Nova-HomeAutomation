@@ -48,9 +48,9 @@ async def handle_client(websocket):
         clients.discard(websocket)
 
 
-async def send_websocket_message(websocket, message):
+async def send_websocket_message(message):
     try:
-        await websocket.send(json.dumps(message))
+        await ws.send(json.dumps(message))
         print(f"Sent: {message}")
     except websockets.exceptions.ConnectionClosed:
         print("Client disconnected while sending!")
