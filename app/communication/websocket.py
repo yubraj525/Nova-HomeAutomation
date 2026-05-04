@@ -49,11 +49,16 @@ async def handle_client(websocket):
 
 
 async def send_websocket_message(message):
+    global ws
+    if ws is None:
+        print("No active websocket connection to send message!")
+        return
     try:
-        await ws.send(json.dumps(message))
+        await ws.send(message)
         print(f"Sent: {message}")
     except websockets.exceptions.ConnectionClosed:
         print("Client disconnected while sending!")
+        ws = None
 
 
 async def broadcast(data):
