@@ -107,7 +107,7 @@ SPEECH_CONFIRM_FRAMES = 5
 SILENCE_LIMIT = int(2000 / FRAME_MS)
 
 no_speech_frames = 0  # NEW
-NO_SPEECH_LIMIT = int(4000 / FRAME_MS)  # 4 sec
+NO_SPEECH_LIMIT = int(6000 / FRAME_MS)  # 4 sec
 
 async def detect_speech(audio_data):
     global speech_active

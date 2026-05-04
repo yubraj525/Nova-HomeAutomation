@@ -36,21 +36,30 @@ def is_nepali(text):
 # ─── PLAYBACK ───────────────────────────────────────────────
 
 
+# def _play_blocking(path):
+#     global music_playing
+#     pygame.mixer.init()
+#     pygame.mixer.music.load(path)
+#     pygame.mixer.music.play()
+#     music_playing = True
+
+#     while pygame.mixer.music.get_busy():
+#         time.sleep(0.1)
+
+#     pygame.mixer.music.unload()
+#     pygame.mixer.quit()
+#     music_playing = False
+#     print("Done playing!")
 def _play_blocking(path):
-    global music_playing
     pygame.mixer.init()
     pygame.mixer.music.load(path)
     pygame.mixer.music.play()
-    music_playing = True
 
     while pygame.mixer.music.get_busy():
-        time.sleep(0.1)
+        time.sleep(0.05)  # tighter + less CPU
 
     pygame.mixer.music.unload()
-    pygame.mixer.quit()
-    music_playing = False
     print("Done playing!")
-
 
 def wait_for_file(path):
     print("Waiting for file...")
