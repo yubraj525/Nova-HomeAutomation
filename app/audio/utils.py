@@ -4,7 +4,7 @@ import wave
 
 def save_audio(audio):
 
-    wf = wave.open("speech.wav","wb")
+    wf = wave.open("data/output_audio/speech.wav","wb")
 
     wf.setnchannels(1)
     wf.setsampwidth(2)

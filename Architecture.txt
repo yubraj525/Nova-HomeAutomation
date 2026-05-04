@@ -14,3 +14,61 @@
 # WebSocket sends command to ESP32
 #    ↓
 # ESP32 performs action (light on/off etc)
+
+
+voice-assistant/
+│
+├── app/                        # Core application logic
+│   ├── main.py                # Entry point (nova.py)
+│   │
+│   ├── audio/                # Audio handling
+│   │   ├── recorder.py
+│   │   ├── player.py
+│   │   └── utils.py
+│   │
+│   ├── wake/                 # Wake word detection
+│   │   └── wakeword.py
+│   │
+│   ├── vad/                  # Speech detection
+│   │   └── vad_detection.py
+│   │
+│   ├── stt/                  # Speech to text
+│   │   └── whisper.py
+│   │
+│   ├── tts/                  # Text to speech
+│   │   └── tts_engine.py
+│   │
+│   ├── llm/                  # AI reasoning
+│   │   ├── groq.py
+│   │   └── ollama.py
+│   │
+│   ├── pipeline/             # Orchestration
+│   │   └── process_audio.py
+│   │
+│   ├── communication/        # WebSocket / APIs
+│   │   └── websocket.py
+│
+├── models/                   # AI models
+│   ├── stt/
+│   ├── tts/
+│   └── ai/
+│
+├── data/                     # Runtime data
+│   ├── input_audio/
+│   ├── output_audio/
+│   └── temp/
+│
+├── assets/                   # Static files
+│   ├── sounds/
+│   └── music/
+│
+├── tests/                    # All test scripts
+│
+├── config/                   # Config files
+│   └── config.py
+│
+├── scripts/                  # Utility scripts
+│
+├── .env
+├── requirements.txt
+└── README.md

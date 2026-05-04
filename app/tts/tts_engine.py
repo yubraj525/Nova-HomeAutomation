@@ -15,7 +15,7 @@ music_paused = False
 music_playing = False
 
 # load Kokoro once!
-kokoro = Kokoro("kokoro-v1.0.fp16-gpu.onnx", "voices-v1.0.bin")
+kokoro = Kokoro("models/tts/kokoro-v1.0.fp16-gpu.onnx", "models/tts/voices-v1.0.bin")
 
 EMOTIONS = {
     "friendly": {"voice": "af_heart", "speed": 1.1},
@@ -68,8 +68,8 @@ def _tts_blocking(text, emotion="sad"):
     return asyncio.run(_tts_async(text, emotion))
 
 async def _tts_async(text, emotion="sad"):
-    temp_file = "temp_response.mp3"
-    final_file = "response.wav"
+    temp_file = "data/output_audio/temp_response.mp3"
+    final_file = "data/output_audio/response.wav"
     if is_nepali(text):
         tts = edge_tts.Communicate(
             text, voice="ne-NP-HemkalaNeural", rate="+10%", pitch="+5Hz", volume="+20%"
@@ -87,7 +87,7 @@ async def _tts_async(text, emotion="sad"):
         samples, sr = kokoro.create(
             text, voice=style["voice"], speed=style["speed"], lang="en-us"
         )
-        sf.write("response.wav", samples, sr)
+        sf.write("data/output_audio/response.wav", samples, sr)
         # _play_blocking("response.wav")
         # time.sleep(0.2)
         # if os.path.exists("response.wav"):
@@ -98,8 +98,10 @@ async def text_to_speech(text, emotion="sad"):
     print("Generating speech...")
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(executor, _tts_blocking, text, emotion)
-    from websocket import stream_audio
-    await stream_audio()
+    # this os for play basck in esp 32
+    # from app.communication.websocket import stream_audio
+    # await stream_audio()
+    play_audio("data/output_audio/response.wav")
 
 
 # ─── MUSIC CONTROLS ─────────────────────────────────────────

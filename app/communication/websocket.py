@@ -4,10 +4,10 @@ import json
 import webrtcvad
 import websockets
 
-from VAD_Detection import detect_speech
+from app.vad.vad_detection import detect_speech
 
 CHUNK_SIZE = 512  # Larger chunks are more efficient for Wi-Fi
-AUDIO_FILE = "response.wav"  # For testing streaming to ESP32
+AUDIO_FILE = "data/output_audio/response.wav"  # For testing streaming to ESP32
 ws = None
 clients = set()
 RATE = 24000
@@ -79,7 +79,7 @@ def get_WSconnection():
     return ws
 
 
-async def stream_audio(AUDIO_FILE="response.wav"):
+async def stream_audio(AUDIO_FILE="data/output_audio/response.wav"):
     websocket = get_WSconnection()
     print("▶ Streaming audio...")
 
@@ -108,7 +108,7 @@ async def stream_audio(AUDIO_FILE="response.wav"):
     await websocket.send("start_stream")  # trigger test playback on ESP
 
 
-async def stream_music(AUDIO_FILE="song.wav"):
+async def stream_music(AUDIO_FILE="assets/music/song.wav"):
     websocket = get_WSconnection()
     print("▶ Streaming audio...")
 

@@ -3,9 +3,9 @@ import asyncio
 import uvicorn
 import websockets
 from fastapi import FastAPI
-from yt_music import download_and_play
-from config import PORT_API, PORT_WS
-from websocket import handle_client
+from app.audio.player import download_and_play
+from config.config import PORT_API, PORT_WS
+from app.communication.websocket import handle_client
 
 # Load model once at startup
 
