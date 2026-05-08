@@ -36,7 +36,7 @@ async def main():
     await orchestrator.start()
 
     ws_server = websockets.serve(handle_client, "0.0.0.0", PORT_WS)
-    api_server = uvicorn.Server(uvicorn.Config(app, host="192.168.1.28", port=PORT_API))
+    api_server = uvicorn.Server(uvicorn.Config(app, host="192.168.1.92", port=PORT_API))
 
     print(f"WebSocket running on port {PORT_WS}")
     print(f"API running on port {PORT_API}")
