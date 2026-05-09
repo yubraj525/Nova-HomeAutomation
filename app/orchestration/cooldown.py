@@ -1,7 +1,7 @@
 import time
 
 
-GREET_COOLDOWN = 30
+GREET_COOLDOWN = 60
 NAME_ASK_COOLDOWN = 60
 UNKNOWN_SETTLE_FRAMES = 10
 FACE_LOST_TIMEOUT = 30
@@ -13,18 +13,14 @@ class CooldownManager:
         self._last_name_ask: float = 0.0
         self._session_faces: dict[str, dict] = {}
         self._unknown_first_seen: float | None = None
-        self._greeted_in_session: set[str] = set()
         self._last_face_time: float = 0.0
 
     def can_greet_face(self, face_id: str) -> bool:
         last = self._last_greeting.get(face_id, 0.0)
-        if face_id in self._greeted_in_session:
-            return False
         return (time.time() - last) > GREET_COOLDOWN
 
     def mark_greeted(self, face_id: str):
         self._last_greeting[face_id] = time.time()
-        self._greeted_in_session.add(face_id)
 
     def can_ask_name(self) -> bool:
         return (time.time() - self._last_name_ask) > NAME_ASK_COOLDOWN
@@ -53,6 +49,5 @@ class CooldownManager:
         return (time.time() - self._last_face_time) < FACE_LOST_TIMEOUT
 
     def reset_session(self):
-        self._greeted_in_session.clear()
         self._session_faces.clear()
         self.reset_unknown()

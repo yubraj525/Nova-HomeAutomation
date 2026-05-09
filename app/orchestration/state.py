@@ -9,16 +9,22 @@ class ConversationState(Enum):
     REGISTERING = "registering"
     LISTENING = "listening"
     SPEAKING = "speaking"
+    PROCESSING = "processing"
+    WAITING = "waiting"
+    SESSION_TIMEOUT = "session_timeout"
 
 
 VALID_TRANSITIONS = {
-    ConversationState.IDLE: [ConversationState.FACE_DETECTED, ConversationState.LISTENING],
-    ConversationState.FACE_DETECTED: [ConversationState.GREETING, ConversationState.CONVERSING, ConversationState.IDLE],
-    ConversationState.GREETING: [ConversationState.CONVERSING, ConversationState.REGISTERING, ConversationState.IDLE],
-    ConversationState.CONVERSING: [ConversationState.LISTENING, ConversationState.SPEAKING, ConversationState.IDLE],
-    ConversationState.REGISTERING: [ConversationState.LISTENING, ConversationState.SPEAKING, ConversationState.IDLE],
-    ConversationState.LISTENING: [ConversationState.SPEAKING, ConversationState.IDLE, ConversationState.REGISTERING],
-    ConversationState.SPEAKING: [ConversationState.LISTENING, ConversationState.IDLE],
+    ConversationState.IDLE: [ConversationState.FACE_DETECTED, ConversationState.LISTENING, ConversationState.WAITING],
+    ConversationState.FACE_DETECTED: [ConversationState.GREETING, ConversationState.CONVERSING, ConversationState.IDLE, ConversationState.SESSION_TIMEOUT],
+    ConversationState.GREETING: [ConversationState.CONVERSING, ConversationState.REGISTERING, ConversationState.LISTENING, ConversationState.IDLE, ConversationState.SESSION_TIMEOUT],
+    ConversationState.CONVERSING: [ConversationState.LISTENING, ConversationState.SPEAKING, ConversationState.PROCESSING, ConversationState.WAITING, ConversationState.IDLE, ConversationState.SESSION_TIMEOUT],
+    ConversationState.REGISTERING: [ConversationState.LISTENING, ConversationState.SPEAKING, ConversationState.PROCESSING, ConversationState.IDLE],
+    ConversationState.LISTENING: [ConversationState.SPEAKING, ConversationState.PROCESSING, ConversationState.IDLE, ConversationState.REGISTERING, ConversationState.SESSION_TIMEOUT],
+    ConversationState.SPEAKING: [ConversationState.LISTENING, ConversationState.CONVERSING, ConversationState.IDLE, ConversationState.SESSION_TIMEOUT],
+    ConversationState.PROCESSING: [ConversationState.SPEAKING, ConversationState.CONVERSING, ConversationState.LISTENING, ConversationState.IDLE, ConversationState.SESSION_TIMEOUT],
+    ConversationState.WAITING: [ConversationState.LISTENING, ConversationState.GREETING, ConversationState.IDLE, ConversationState.SESSION_TIMEOUT],
+    ConversationState.SESSION_TIMEOUT: [ConversationState.IDLE, ConversationState.FACE_DETECTED],
 }
 
 STATE_NAMES = {s: s.value for s in ConversationState}

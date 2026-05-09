@@ -14,7 +14,6 @@ client = Groq(api_key=os.getenv("GROQ"))
 
 MAX_HISTORY = 5
 
-# Fallback rolling history used when no face is recognized.
 _unknown_history: list[dict] = []
 _current_face_context = ""
 _current_face_id: str | None = None
@@ -27,7 +26,6 @@ def set_face_context(context: str, face_id: str | None = None):
 
 
 def _history_for_prompt() -> list[dict]:
-    """Return the last MAX_HISTORY exchanges for the current speaker."""
     if _current_face_id:
         mem = get_memory().get(_current_face_id)
         hist = mem.get("history", [])[-(MAX_HISTORY * 2):]
@@ -36,7 +34,6 @@ def _history_for_prompt() -> list[dict]:
 
 
 def _record_exchange(user_text: str, assistant_text: str):
-    """Persist this exchange against the current face if known, else fallback."""
     if _current_face_id:
         get_memory().add_history(_current_face_id, user_text, assistant_text)
         return
@@ -78,6 +75,10 @@ INTENT TYPES:
    - command  : user wants to control a device or music
    - query    : user asks a question or makes a casual comment
    - register : the speaker is unknown and either (a) we need to ask for their name, or (b) they just told us their name and we should remember them
+   - conversation_continue : user is continuing a prior conversation naturally (no new intent to classify)
+   - followup_question : user asks a follow-up to the previous topic
+   - session_end : user signals they are leaving or done talking (e.g. "bye", "I'm leaving", "see you")
+   - memory_update : user shares personal info that should be remembered (e.g. "I like AI", "I'm from Pokhara")
 
 3. Keep the spoken `response` casual, human-like, short (max 15 words).
 4. Use `convo` only for an optional natural follow-up.
@@ -130,11 +131,55 @@ Register (unknown visitor):
   "convo":"optional follow-up"
 }}
 
+Conversation continue (user continuing naturally, no special intent):
+{{
+  "type":"conversation_continue",
+  "target":"none",
+  "action":"none",
+  "song":"",
+  "name":"",
+  "response":"friendly reply continuing the chat",
+  "convo":"optional follow-up"
+}}
+
+Follow-up question (user asking more about the previous topic):
+{{
+  "type":"followup_question",
+  "target":"none",
+  "action":"none",
+  "song":"",
+  "name":"",
+  "response":"friendly reply to the follow-up",
+  "convo":"optional follow-up question back"
+}}
+
+Session end (user says goodbye):
+{{
+  "type":"session_end",
+  "target":"none",
+  "action":"none",
+  "song":"",
+  "name":"",
+  "response":"warm goodbye message",
+  "convo":""
+}}
+
+Memory update (user shares info to remember):
+{{
+  "type":"memory_update",
+  "target":"none",
+  "action":"none",
+  "song":"",
+  "name":"",
+  "response":"I'll remember that!",
+  "convo":"optional follow-up"
+}}
+
 RULES:
-- Output JSON only — no markdown, no extra text.
+- Output JSON only — no markdown, no extra text always reply in nepalii devnagari in response .
 - Always include `type` and `response`.
 - Use the conversation history to make replies feel personal.
-- Match the user's language style (English / Nepali / Romanized Nepali / Nepanglish). Never switch on your own.
+- Match the user's language style (English / Nepali / Romanized Nepali / Nepanglish). Never switch on your own .
 - For confusing input return: {{"type":"query","target":"none","action":"none","song":"","name":"","response":"Sorry, didn't understand.","convo":"Please rephrase."}}
 """
 

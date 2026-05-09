@@ -3,6 +3,7 @@ from collections import deque
 import numpy as np
 import webrtcvad
 
+from app.orchestration.event_bus import EventBus
 from app.pipeline.process_audio import process_audio
 from app.audio.utils import save_audio
 
@@ -26,6 +27,8 @@ no_speech_frames = 0
 NO_SPEECH_LIMIT = int(6000 / FRAME_MS)
 
 _frame_count = 0
+
+_event_bus = EventBus()
 
 
 async def detect_speech(audio_data):
@@ -61,6 +64,7 @@ async def detect_speech(audio_data):
             print(f"[VAD] Pre-buffer has {len(pre_buffer)} frames ({len(pre_buffer) * FRAME_MS}ms context)")
             speech_active = True
             audio_buffer.extend(pre_buffer)
+            await _event_bus.publish("speech_started", {})
 
         if speech_active:
             audio_buffer.append(frame)

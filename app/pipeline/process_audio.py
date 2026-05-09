@@ -8,6 +8,8 @@ from app.audio.player import download_and_play
 from app.face.context import build_face_context
 from app.face.face_tools import FrameBuffer, get_bridge
 from app.llm.groq import groq_llm_json, set_face_context
+from app.orchestration.event_bus import EventBus
+from app.orchestration.interaction_lock import InteractionLock
 from app.pipeline.process_transcript import handle_command
 from app.stt.whisper import transcribe_audio
 from app.tts.tts_engine import (
@@ -25,7 +27,6 @@ _CURRENT_FACE = None
 
 
 def update_face_context(face_info: dict | None):
-    """Push the current visitor's face info into the LLM module."""
     global _CURRENT_FACE
     _CURRENT_FACE = face_info
     ctx = build_face_context(face_info) if face_info else ""
@@ -35,7 +36,6 @@ def update_face_context(face_info: dict | None):
 
 
 def _recognize_snapshot():
-    """Run face recognition on the freshest camera frame. Returns face_info or None."""
     t0 = time.time()
     frame, ts = FrameBuffer().get()
     if frame is None:
@@ -79,35 +79,44 @@ async def _register_face(name: str) -> bool:
 
 
 async def _speak(text: str, out_path: str = AUDIO_PATH):
-    """Render TTS to a WAV file and play it on the Pi's local speaker."""
+    event_bus = EventBus()
+    await event_bus.publish("tts_started", {"text": text})
     t0 = time.time()
     print(f"[PIPELINE] TTS start: '{text[:80]}'")
     file = await text_to_speech(text, out_path=out_path)
     print(f"[PIPELINE] TTS render done ({time.time()-t0:.1f}s) → playing...")
     await play_audio(file)
     print(f"[PIPELINE] TTS playback done (total {time.time()-t0:.1f}s)")
+    await event_bus.publish("tts_finished", {"text": text})
 
 
 async def process_audio():
+    lock = InteractionLock()
+    event_bus = EventBus()
+
+    await lock.release("speech")
+
+    if lock.is_active and not lock.is_inactive:
+        print(f"[PIPELINE] Interaction lock active — pipeline paused")
+        return
+
+    await lock.acquire("pipeline")
+
     print("[PIPELINE] ═══════ STARTING PIPELINE ═══════")
     t_pipeline = time.time()
 
-    # B1 + B2: kick off STT and face recognition in parallel, both off the event loop.
-    print("[PIPELINE] Kicking off STT + face recognition in parallel")
-    text_task = asyncio.create_task(asyncio.to_thread(transcribe_audio))
-    face_task = asyncio.create_task(asyncio.to_thread(_recognize_snapshot))
+    face_info = _CURRENT_FACE
+    print(f"[PIPELINE] Cached face context: {face_info}")
 
-    text = await text_task
+    await event_bus.publish("speech_ended", {"face_info": face_info})
+
+    text = await asyncio.to_thread(transcribe_audio)
     print(f"[PIPELINE] STT result: '{text}' (took {time.time()-t_pipeline:.1f}s)")
 
     if not text or len(text.strip()) < 2:
         print(f"[PIPELINE] ✗ Empty/invalid transcription — skipping ({time.time()-t_pipeline:.1f}s)")
-        face_task.cancel()
+        await lock.release("pipeline")
         return
-
-    face_info = await face_task
-    print(f"[PIPELINE] Face result: {face_info}")
-    update_face_context(face_info)
 
     print("[PIPELINE] Calling LLM...")
     t_llm = time.time()
@@ -116,14 +125,6 @@ async def process_audio():
 
     reply = response.get("response", "")
     convo_reply = response.get("convo", "")
-
-    # B4: pre-render the optional follow-up while the main reply is still playing.
-    convo_task = None
-    if convo_reply.strip():
-        print(f"[PIPELINE] Pre-rendering follow-up: '{convo_reply[:60]}'")
-        convo_task = asyncio.create_task(
-            text_to_speech(convo_reply, out_path=CONVO_AUDIO_PATH)
-        )
 
     if reply.strip():
         print(f"[PIPELINE] Nova says: '{reply}'")
@@ -165,16 +166,17 @@ async def process_audio():
             ok = await _register_face(name)
             if ok:
                 print(f"[PIPELINE] ✓ Registered: {name}")
+                await event_bus.publish("user_registered", {"name": name})
             else:
                 print(f"[PIPELINE] ✗ Failed to register {name}")
         else:
             print(f"[PIPELINE] Register type but no name in response")
 
-    if convo_task is not None:
-        convo_file = await convo_task
-        print(f"[PIPELINE] Follow-up TTS: '{convo_reply[:60]}'")
-        await play_audio(convo_file)
+    elif rtype in ("conversation_continue", "followup_question"):
+        print(f"[PIPELINE] Continuing conversation: type={rtype}")
 
+    elif rtype == "session_end":
+        print(f"[PIPELINE] Session end requested")
     total = time.time() - t_pipeline
     print(f"[PIPELINE] ═══════ PIPELINE DONE ({total:.1f}s) ═══════")
     try:
@@ -183,3 +185,6 @@ async def process_audio():
         print("[PIPELINE] Sent: start_stream → ready for next utterance")
     except Exception as e:
         print(f"[PIPELINE] Error sending start_stream: {e}")
+
+    await event_bus.publish("pipeline_complete", {"duration": total})
+    await lock.release("pipeline")
