@@ -11,14 +11,18 @@ import soundfile as sf
 from kokoro_onnx import Kokoro
 from pydub import AudioSegment  # You'll need: pip install pydub
 from config.config import AUDIO_PATH
+import numpy as np
+from kokoro_onnx import Kokoro
 
 executor = ThreadPoolExecutor()
 music_paused = False
 music_playing = False
 
 # load Kokoro once!
-# kokoro = Kokoro("models/tts/kokoro-v1.0.fp16-gpu.onnx", "models/tts/voices-v1.0.bin")
-
+kokoro = Kokoro(
+    "models/kokoro-v1.0.int8.onnx",
+    "models/voices-v1.0.bin"
+)
 client = Groq(api_key=os.getenv("GROQ"))
 
 
@@ -81,39 +85,70 @@ async def play_audio(path=AUDIO_PATH):
 def _tts_blocking(text, emotion="sad"):
     return asyncio.run(_tts_async(text, emotion))
 
+
+
 # async def _tts_async(text, emotion="sad"):
 #     temp_file = "data/output_audio/temp_response.mp3"
 #     final_file = "data/output_audio/response.wav"
+
 #     if is_nepali(text):
+#         # keep your existing EdgeTTS pipeline unchanged
 #         tts = edge_tts.Communicate(
-#             text, voice="ne-NP-HemkalaNeural", rate="+10%", pitch="+5Hz", volume="+20%"
+#             text,
+#             voice="ne-NP-HemkalaNeural",
+#             rate="+10%",
+#             pitch="+5Hz",
+#             volume="+20%"
 #         )
 
 #         await tts.save(temp_file)
 
-#         # 2. Convert to 24000Hz, 16-bit PCM WAV for your hardware
 #         audio = AudioSegment.from_file(temp_file)
 #         audio = audio.set_frame_rate(24000).set_sample_width(2).set_channels(1)
 #         audio.export(final_file, format="wav", codec="pcm_s16le")
-#     else:
-#         # Kokoro for English — natural!
-#         style = EMOTIONS.get(emotion, EMOTIONS["sad"])
-#         samples, sr = kokoro.create(
-#             text, voice=style["voice"], speed=style["speed"], lang="en-us"
-#         )
-#         sf.write(AUDIO_PATH, samples, sr)
-#         # _play_blocking("response.wav")
-#         # time.sleep(0.2)
-#         # if os.path.exists("response.wav"):
-#         #     os.remove("response.wav")
 
+#     else:
+#         # ─── GROQ TTS REPLACEMENT ─────────────────────────────
+#         voice_map = {
+#             "friendly": "alloy",
+#             "excited": "verse",
+#             "calm": "alloy",
+#             "sad": "verse",
+#             "cheerful": "verse",
+#             "serious": "alloy",
+#             "assistant": "alloy",
+#         }
+
+#         voice = voice_map.get(emotion, "alloy")
+
+#         response = client.audio.speech.create(
+#             model="canopylabs/orpheus-v1-english",
+#             voice="hannah",
+#             input=text,
+#             response_format="wav"
+#         )
+
+#         # IMPORTANT: keep SAME output name
+#         response.write_to_file(final_file)
+        
+# async def text_to_speech(text, emotion="sad"):
+#     print("Generating speech...")
+#     loop = asyncio.get_event_loop()
+#     await loop.run_in_executor(executor, _tts_blocking, text, emotion)
+#     # this os for play basck in esp 32
+#     # from app.communication.websocket import stream_audio
+#     # await stream_audio()
+#     return AUDIO_PATH
 
 async def _tts_async(text, emotion="sad"):
     temp_file = "data/output_audio/temp_response.mp3"
     final_file = "data/output_audio/response.wav"
 
+    # ─────────────────────────────
+    # NEPALI (UNCHANGED)
+    # ─────────────────────────────
     if is_nepali(text):
-        # keep your existing EdgeTTS pipeline unchanged
+
         tts = edge_tts.Communicate(
             text,
             voice="ne-NP-HemkalaNeural",
@@ -128,40 +163,65 @@ async def _tts_async(text, emotion="sad"):
         audio = audio.set_frame_rate(24000).set_sample_width(2).set_channels(1)
         audio.export(final_file, format="wav", codec="pcm_s16le")
 
+    # ─────────────────────────────
+    # ENGLISH → KOKORO (NEW CORE)
+    # ─────────────────────────────
     else:
-        # ─── GROQ TTS REPLACEMENT ─────────────────────────────
+
         voice_map = {
-            "friendly": "alloy",
-            "excited": "verse",
-            "calm": "alloy",
-            "sad": "verse",
-            "cheerful": "verse",
-            "serious": "alloy",
-            "assistant": "alloy",
+            "friendly": "af_heart",
+            "excited": "af_sky",
+            "calm": "af_heart",
+            "sad": "af_sky",
+            "cheerful": "af_sky",
+            "serious": "am_adam",
+            "assistant": "af_heart",
         }
 
-        voice = voice_map.get(emotion, "alloy")
+        style_voice = voice_map.get(emotion, "af_heart")
 
-        response = client.audio.speech.create(
-            model="canopylabs/orpheus-v1-english",
-            voice="hannah",
-            input=text,
-            response_format="wav"
+        samples, sr = kokoro.create(
+            text,
+            voice=style_voice,
+            speed=1.0,
+            lang="en-us"
         )
 
-        # IMPORTANT: keep SAME output name
-        response.write_to_file(final_file)
-        
+        # ─────────────────────────────
+        # FORCE EXACT WAV FORMAT YOU WANT
+        # ─────────────────────────────
+
+        samples = np.clip(samples, -1, 1)
+        samples = (samples * 32767).astype(np.int16)
+
+        audio = AudioSegment(
+            samples.tobytes(),
+            frame_rate=sr,
+            sample_width=2,
+            channels=1
+        )
+
+        audio = audio.set_frame_rate(24000)
+
+        audio.export(
+            final_file,
+            format="wav",
+            codec="pcm_s16le"
+        )
+
 async def text_to_speech(text, emotion="sad"):
     print("Generating speech...")
+
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(executor, _tts_blocking, text, emotion)
-    # this os for play basck in esp 32
-    # from app.communication.websocket import stream_audio
-    # await stream_audio()
+
+    await loop.run_in_executor(
+        executor,
+        _tts_blocking,
+        text,
+        emotion
+    )
+
     return AUDIO_PATH
-
-
 # ─── MUSIC CONTROLS ─────────────────────────────────────────
 
 
