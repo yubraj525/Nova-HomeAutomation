@@ -5,6 +5,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 import os
 import edge_tts
+from groq import Groq
 import pygame
 import soundfile as sf
 from kokoro_onnx import Kokoro
@@ -16,7 +17,10 @@ music_paused = False
 music_playing = False
 
 # load Kokoro once!
-kokoro = Kokoro("models/tts/kokoro-v1.0.fp16-gpu.onnx", "models/tts/voices-v1.0.bin")
+# kokoro = Kokoro("models/tts/kokoro-v1.0.fp16-gpu.onnx", "models/tts/voices-v1.0.bin")
+
+client = Groq(api_key=os.getenv("GROQ"))
+
 
 EMOTIONS = {
     "friendly": {"voice": "af_heart", "speed": 1.1},
@@ -77,33 +81,77 @@ async def play_audio(path=AUDIO_PATH):
 def _tts_blocking(text, emotion="sad"):
     return asyncio.run(_tts_async(text, emotion))
 
+# async def _tts_async(text, emotion="sad"):
+#     temp_file = "data/output_audio/temp_response.mp3"
+#     final_file = "data/output_audio/response.wav"
+#     if is_nepali(text):
+#         tts = edge_tts.Communicate(
+#             text, voice="ne-NP-HemkalaNeural", rate="+10%", pitch="+5Hz", volume="+20%"
+#         )
+
+#         await tts.save(temp_file)
+
+#         # 2. Convert to 24000Hz, 16-bit PCM WAV for your hardware
+#         audio = AudioSegment.from_file(temp_file)
+#         audio = audio.set_frame_rate(24000).set_sample_width(2).set_channels(1)
+#         audio.export(final_file, format="wav", codec="pcm_s16le")
+#     else:
+#         # Kokoro for English — natural!
+#         style = EMOTIONS.get(emotion, EMOTIONS["sad"])
+#         samples, sr = kokoro.create(
+#             text, voice=style["voice"], speed=style["speed"], lang="en-us"
+#         )
+#         sf.write(AUDIO_PATH, samples, sr)
+#         # _play_blocking("response.wav")
+#         # time.sleep(0.2)
+#         # if os.path.exists("response.wav"):
+#         #     os.remove("response.wav")
+
+
 async def _tts_async(text, emotion="sad"):
     temp_file = "data/output_audio/temp_response.mp3"
     final_file = "data/output_audio/response.wav"
+
     if is_nepali(text):
+        # keep your existing EdgeTTS pipeline unchanged
         tts = edge_tts.Communicate(
-            text, voice="ne-NP-HemkalaNeural", rate="+10%", pitch="+5Hz", volume="+20%"
+            text,
+            voice="ne-NP-HemkalaNeural",
+            rate="+10%",
+            pitch="+5Hz",
+            volume="+20%"
         )
 
         await tts.save(temp_file)
 
-        # 2. Convert to 24000Hz, 16-bit PCM WAV for your hardware
         audio = AudioSegment.from_file(temp_file)
         audio = audio.set_frame_rate(24000).set_sample_width(2).set_channels(1)
         audio.export(final_file, format="wav", codec="pcm_s16le")
+
     else:
-        # Kokoro for English — natural!
-        style = EMOTIONS.get(emotion, EMOTIONS["sad"])
-        samples, sr = kokoro.create(
-            text, voice=style["voice"], speed=style["speed"], lang="en-us"
+        # ─── GROQ TTS REPLACEMENT ─────────────────────────────
+        voice_map = {
+            "friendly": "alloy",
+            "excited": "verse",
+            "calm": "alloy",
+            "sad": "verse",
+            "cheerful": "verse",
+            "serious": "alloy",
+            "assistant": "alloy",
+        }
+
+        voice = voice_map.get(emotion, "alloy")
+
+        response = client.audio.speech.create(
+            model="canopylabs/orpheus-v1-english",
+            voice="hannah",
+            input=text,
+            response_format="wav"
         )
-        sf.write(AUDIO_PATH, samples, sr)
-        # _play_blocking("response.wav")
-        # time.sleep(0.2)
-        # if os.path.exists("response.wav"):
-        #     os.remove("response.wav")
 
-
+        # IMPORTANT: keep SAME output name
+        response.write_to_file(final_file)
+        
 async def text_to_speech(text, emotion="sad"):
     print("Generating speech...")
     loop = asyncio.get_event_loop()
