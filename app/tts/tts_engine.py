@@ -2,17 +2,24 @@
 
 import asyncio
 import time
-from concurrent.futures import ThreadPoolExecutor
 import os
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 import edge_tts
 from groq import Groq
 import pygame
 import soundfile as sf
 from kokoro_onnx import Kokoro
-from pydub import AudioSegment  # You'll need: pip install pydub
+from pydub import AudioSegment
 from config.config import AUDIO_PATH
 import numpy as np
-from kokoro_onnx import Kokoro
+
+# ── absolute paths so CWD never matters ─────────────────────
+_ROOT = Path(__file__).resolve().parent.parent.parent
+_AUDIO_DIR = _ROOT / "data" / "output_audio"
+_TEMP_MP3  = str(_AUDIO_DIR / "temp_response.mp3")
+_FINAL_WAV = str(_AUDIO_DIR / "response.wav")
+_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
 executor = ThreadPoolExecutor()
 music_paused = False
@@ -141,25 +148,40 @@ def _tts_blocking(text, emotion="sad"):
 #     return AUDIO_PATH
 
 async def _tts_async(text, emotion="sad"):
-    temp_file = "data/output_audio/temp_response.mp3"
-    final_file = "data/output_audio/response.wav"
+    temp_file = _TEMP_MP3
+    final_file = _FINAL_WAV
+
+    # Release pygame's hold on the file before we overwrite it
+    try:
+        if pygame.mixer.get_init():
+            pygame.mixer.music.stop()
+            pygame.mixer.music.unload()
+            pygame.mixer.quit()
+    except Exception:
+        pass
 
     # ─────────────────────────────
     # NEPALI (UNCHANGED)
     # ─────────────────────────────
     if is_nepali(text):
-
+        # Slower pace (-12%) + slightly lower pitch (-2 Hz) = calmer, more natural Nepali
         tts = edge_tts.Communicate(
             text,
             voice="ne-NP-HemkalaNeural",
-            rate="+10%",
-            pitch="+5Hz",
-            volume="+20%"
+            rate="-12%",
+            pitch="-2Hz",
+            volume="+15%"
         )
 
         await tts.save(temp_file)
 
         audio = AudioSegment.from_file(temp_file)
+
+        # Normalize volume so it's consistent across sentences
+        from pydub.effects import normalize, low_pass_filter
+        audio = normalize(audio)                  # peak-normalize
+        audio = low_pass_filter(audio, 7500)      # gentle warmth — removes harsh highs
+
         audio = audio.set_frame_rate(24000).set_sample_width(2).set_channels(1)
         audio.export(final_file, format="wav", codec="pcm_s16le")
 

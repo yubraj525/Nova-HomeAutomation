@@ -2,13 +2,30 @@ import asyncio
 import os
 from app.llm.ollama import generate_local_async
 from app.pipeline.process_transcript import handle_command
-from app.tts.tts_engine import pause_music,play_audio, resume_music, stop_music, text_to_speech
+from app.tts.tts_engine import pause_music, play_audio, resume_music, stop_music, text_to_speech
 from app.llm.groq import groq_llm_json
-from app.stt.whisper import transcribe_audio
 from app.audio.player import download_and_play
 
+
+def _transcribe(audio_path: str = "data/output_audio/speech.wav") -> str:
+    """
+    Try the offline sherpa-onnx Whisper model first (no internet, Nepali-aware).
+    Falls back to Groq cloud Whisper if the local model isn't downloaded yet.
+    """
+    try:
+        from app.stt.sherpa_stt import transcribe_audio as transcribe_offline
+        return transcribe_offline(audio_path)
+    except FileNotFoundError:
+        print(
+            "[pipeline] Offline model not found — falling back to Groq cloud.\n"
+            "           Run once: python scripts/download_stt_model.py"
+        )
+        from app.stt.whisper import transcribe_audio as transcribe_cloud
+        return transcribe_cloud(audio_path)
+
+
 async def process_audio():
-    text = transcribe_audio()
+    text = _transcribe()
     print(f"Transcribed text: {text}")
     if not text or len(text.strip()) < 2:
         print("Empty or invalid transcription — skipping!")
