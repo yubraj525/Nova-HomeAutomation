@@ -105,7 +105,7 @@ async def text_to_speech(text: str, emotion: str = "sad") -> str:
 
     Returns the path to the output WAV file.
     """
-    logger.info("TTS (%s chars) …", len(text))
+    logger.info("TTS (%s chars)...", len(text))
     loop = asyncio.get_event_loop()
     path = await loop.run_in_executor(_executor, _synthesize_to_wav, text)
     return path
