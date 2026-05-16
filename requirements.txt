@@ -1,24 +1,31 @@
-edge_tts==7.2.7
-fastapi==0.135.1
-groq==1.1.1
-kokoro_onnx==0.5.0
-numpy==2.4.3
-ollama==0.6.1
-protobuf==7.34.1
-PyAudio==0.2.14
-pydub==0.25.1
-pygame==2.6.1
-python-dotenv==1.2.2
-soundfile==0.13.1
-uvicorn==0.42.0
-webrtcvad_wheels==2.0.13
-websockets==16.0
+# Core runtime dependencies for Nova
+fastapi>=0.135.1
+groq>=1.1.1
+numpy>=1.26.4
+ollama>=0.6.1
+openwakeword>=0.6.0
+pyaudio>=0.2.14
+pydub>=0.25.1
+pygame>=2.6.1
+python-dotenv>=1.2.2
+scipy>=1.17.1
+sherpa-onnx>=1.13.1
+sounddevice>=0.5.5
+soundfile>=0.13.1
+soxr>=0.3.7
+uvicorn[standard]>=0.42.0
+webrtcvad-wheels>=2.0.13
+websockets>=16.0
+yt-dlp>=2026.3.17
 
-groq
-google-genai
-webractvad
-fastapi
-dotenv
-yt_dlp
-edge_tts
-kokoro_onnx
+# Optional: AI4Bharat neural transliterator (better English→Nepali, requires PyTorch)
+# Install only if you have enough RAM/disk (PyTorch adds ~1 GB)
+# ai4bharat-transliteration>=1.1.0
+
+# Optional helpers used by tests and experiments
+google-genai>=1.66.0
+pytest>=8.0.0
+
+# Removed (replaced by offline Piper engine):
+# edge-tts          — was used for cloud Nepali TTS
+# kokoro-onnx       — was used for English Kokoro TTS
