@@ -79,7 +79,6 @@ SEED: dict[str, str] = {
     "report": "रिपोर्ट", "result": "रिजल्ट", "exam": "एग्जाम",
     "test": "टेस्ट", "bus": "बस", "bike": "बाइक", "car": "कार",
     "taxi": "ट्याक्सी", "hotel": "होटल", "market": "मार्केट",
-    "bank": "बैंक", "bill": "बिल", "account": "एकाउन्ट",
     "problem": "प्रब्लेम", "idea": "आइडिया", "plan": "प्लान",
     "list": "लिस्ट", "time": "टाइम", "news": "न्युज", "game": "गेम",
     "team": "टिम", "match": "म्याच", "music": "म्युजिक", "song": "सङ",

@@ -13,7 +13,7 @@ def _transcribe(audio_path: str = "data/output_audio/speech.wav") -> str:
     Falls back to Groq cloud Whisper if the local model isn't downloaded yet.
     """
     try:
-        from app.stt.sherpa_stt import transcribe_audio as transcribe_offline
+        from app.stt.whisper import transcribe_audio as transcribe_offline
         return transcribe_offline(audio_path)
     except FileNotFoundError:
         print(
