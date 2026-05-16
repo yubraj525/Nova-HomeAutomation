@@ -1,158 +1,82 @@
-# speech.py — replace text_to_speech with Kokoro!
+"""
+tts_engine.py — Nova TTS wrapper
+=================================
+Public API (unchanged):
+    await text_to_speech(text, emotion="sad")  → audio path str
+    await play_audio(path)
+    pause_music() / resume_music() / stop_music()
+
+Now routes ALL synthesis (Nepali, English, mixed Nepanglish) through the
+offline NepanglishTTS engine (Piper ONNX via sherpa-onnx).
+No cloud calls, no GPU needed — runs on Raspberry Pi.
+
+The filler/streaming helpers are also re-exported so other modules can do:
+    from app.tts.tts_engine import speak, play_filler, render_fillers
+"""
+from __future__ import annotations
 
 import asyncio
-import time
+import logging
 import os
-from pathlib import Path
+import struct
+import tempfile
+import time
+import wave
 from concurrent.futures import ThreadPoolExecutor
-import edge_tts
-from groq import Groq
-import pygame
-import soundfile as sf
-from kokoro_onnx import Kokoro
-from pydub import AudioSegment
-from config.config import AUDIO_PATH
+from pathlib import Path
+
 import numpy as np
 
-# ── absolute paths so CWD never matters ─────────────────────
-_ROOT = Path(__file__).resolve().parent.parent.parent
+logger = logging.getLogger(__name__)
+
+# ── Paths ──────────────────────────────────────────────────────────────────
+_ROOT      = Path(__file__).resolve().parent.parent.parent
 _AUDIO_DIR = _ROOT / "data" / "output_audio"
-_TEMP_MP3  = str(_AUDIO_DIR / "temp_response.mp3")
 _FINAL_WAV = str(_AUDIO_DIR / "response.wav")
 _AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
-executor = ThreadPoolExecutor()
-music_paused = False
-music_playing = False
+# Keep AUDIO_PATH import-compatible with config (if it exists)
+try:
+    from config.config import AUDIO_PATH  # type: ignore
+except ImportError:
+    AUDIO_PATH = _FINAL_WAV
 
-# load Kokoro once!
-kokoro = Kokoro(
-    "models/kokoro-v1.0.int8.onnx",
-    "models/voices-v1.0.bin"
-)
-client = Groq(api_key=os.getenv("GROQ"))
+# ── Thread pool ────────────────────────────────────────────────────────────
+_executor = ThreadPoolExecutor(max_workers=1)
 
-
-EMOTIONS = {
-    "friendly": {"voice": "af_heart", "speed": 1.1},
-    "excited": {"voice": "af_sky", "speed": 1.3},
-    "calm": {"voice": "af_heart", "speed": 0.85},
-    "sad": {"voice": "af_heart", "speed": 0.75},
-    "cheerful": {"voice": "af_sky", "speed": 1.2},
-    "serious": {"voice": "am_adam", "speed": 0.9},
-    "assistant": {"voice": "af_heart", "speed": 1.0},
-}
+# ── Pygame state ───────────────────────────────────────────────────────────
+_music_paused  = False
+_music_playing = False
 
 
-def is_nepali(text):
-    return any("\u0900" <= c <= "\u097f" for c in text)
+# ── Lazy imports (avoid loading heavy model at import time) ────────────────
+def _get_synth():
+    from app.tts.nepanglish_tts import get_synthesizer
+    return get_synthesizer()
 
 
-# ─── PLAYBACK ───────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Core synthesis  (blocking, runs in executor)
+# ---------------------------------------------------------------------------
 
+def _synthesize_to_wav(text: str) -> str:
+    """
+    Synthesise *text* (any mix of Nepali/English) to _FINAL_WAV.
+    Returns the path to the written WAV file.
+    """
+    synth   = _get_synth()
+    chunks  = list(synth.synthesize_stream(text))
 
-# def _play_blocking(path):
-#     global music_playing
-#     pygame.mixer.init()
-#     pygame.mixer.music.load(path)
-#     pygame.mixer.music.play()
-#     music_playing = True
+    if not chunks:
+        logger.warning("TTS produced no audio for: %r", text)
+        return _FINAL_WAV
 
-#     while pygame.mixer.music.get_busy():
-#         time.sleep(0.1)
+    samples = np.concatenate(chunks).astype(np.float32)
+    pcm     = (np.clip(samples, -1, 1) * 32767).astype(np.int16).tobytes()
 
-#     pygame.mixer.music.unload()
-#     pygame.mixer.quit()
-#     music_playing = False
-#     print("Done playing!")
-def _play_blocking(path):
-    pygame.mixer.init()
-    pygame.mixer.music.load(path)
-    pygame.mixer.music.play()
-
-    while pygame.mixer.music.get_busy():
-        time.sleep(0.05)  # tighter + less CPU
-
-    pygame.mixer.music.unload()
-    print("Done playing!")
-
-def wait_for_file(path):
-    print("Waiting for file...")
-
-    while not os.path.exists(path) or os.path.getsize(path) < 1000:
-        time.sleep(0.1)
-
-    print("File ready!")
-
-
-async def play_audio(path=AUDIO_PATH):
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(executor, _play_blocking, path)
-    
-def _tts_blocking(text, emotion="sad"):
-    return asyncio.run(_tts_async(text, emotion))
-
-
-
-# async def _tts_async(text, emotion="sad"):
-#     temp_file = "data/output_audio/temp_response.mp3"
-#     final_file = "data/output_audio/response.wav"
-
-#     if is_nepali(text):
-#         # keep your existing EdgeTTS pipeline unchanged
-#         tts = edge_tts.Communicate(
-#             text,
-#             voice="ne-NP-HemkalaNeural",
-#             rate="+10%",
-#             pitch="+5Hz",
-#             volume="+20%"
-#         )
-
-#         await tts.save(temp_file)
-
-#         audio = AudioSegment.from_file(temp_file)
-#         audio = audio.set_frame_rate(24000).set_sample_width(2).set_channels(1)
-#         audio.export(final_file, format="wav", codec="pcm_s16le")
-
-#     else:
-#         # ─── GROQ TTS REPLACEMENT ─────────────────────────────
-#         voice_map = {
-#             "friendly": "alloy",
-#             "excited": "verse",
-#             "calm": "alloy",
-#             "sad": "verse",
-#             "cheerful": "verse",
-#             "serious": "alloy",
-#             "assistant": "alloy",
-#         }
-
-#         voice = voice_map.get(emotion, "alloy")
-
-#         response = client.audio.speech.create(
-#             model="canopylabs/orpheus-v1-english",
-#             voice="hannah",
-#             input=text,
-#             response_format="wav"
-#         )
-
-#         # IMPORTANT: keep SAME output name
-#         response.write_to_file(final_file)
-        
-# async def text_to_speech(text, emotion="sad"):
-#     print("Generating speech...")
-#     loop = asyncio.get_event_loop()
-#     await loop.run_in_executor(executor, _tts_blocking, text, emotion)
-#     # this os for play basck in esp 32
-#     # from app.communication.websocket import stream_audio
-#     # await stream_audio()
-#     return AUDIO_PATH
-
-async def _tts_async(text, emotion="sad"):
-    temp_file = _TEMP_MP3
-    final_file = _FINAL_WAV
-
-    # Release pygame's hold on the file before we overwrite it
+    # Release pygame's hold on the file before overwriting
     try:
+        import pygame  # type: ignore
         if pygame.mixer.get_init():
             pygame.mixer.music.stop()
             pygame.mixer.music.unload()
@@ -160,128 +84,117 @@ async def _tts_async(text, emotion="sad"):
     except Exception:
         pass
 
-    # ─────────────────────────────
-    # NEPALI (UNCHANGED)
-    # ─────────────────────────────
-    if is_nepali(text):
-        # Slower pace (-12%) + slightly lower pitch (-2 Hz) = calmer, more natural Nepali
-        tts = edge_tts.Communicate(
-            text,
-            voice="ne-NP-HemkalaNeural",
-            rate="-12%",
-            pitch="-2Hz",
-            volume="+15%"
-        )
+    with wave.open(_FINAL_WAV, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(synth.sample_rate)
+        wf.writeframes(pcm)
 
-        await tts.save(temp_file)
+    logger.debug("WAV written → %s  (%d samples)", _FINAL_WAV, len(samples))
+    return _FINAL_WAV
 
-        audio = AudioSegment.from_file(temp_file)
 
-        # Normalize volume so it's consistent across sentences
-        from pydub.effects import normalize, low_pass_filter
-        audio = normalize(audio)                  # peak-normalize
-        audio = low_pass_filter(audio, 7500)      # gentle warmth — removes harsh highs
+# ---------------------------------------------------------------------------
+# Public async API  (keeps exact same signature as old tts_engine)
+# ---------------------------------------------------------------------------
 
-        audio = audio.set_frame_rate(24000).set_sample_width(2).set_channels(1)
-        audio.export(final_file, format="wav", codec="pcm_s16le")
+async def text_to_speech(text: str, emotion: str = "sad") -> str:
+    """
+    Synthesise *text* offline.  *emotion* is accepted for API compatibility
+    but is not used (the Nepali Piper voice has a single speaker style).
 
-    # ─────────────────────────────
-    # ENGLISH → KOKORO (NEW CORE)
-    # ─────────────────────────────
-    else:
-
-        voice_map = {
-            "friendly": "af_heart",
-            "excited": "af_sky",
-            "calm": "af_heart",
-            "sad": "af_sky",
-            "cheerful": "af_sky",
-            "serious": "am_adam",
-            "assistant": "af_heart",
-        }
-
-        style_voice = voice_map.get(emotion, "af_heart")
-
-        samples, sr = kokoro.create(
-            text,
-            voice=style_voice,
-            speed=1.0,
-            lang="en-us"
-        )
-
-        # ─────────────────────────────
-        # FORCE EXACT WAV FORMAT YOU WANT
-        # ─────────────────────────────
-
-        samples = np.clip(samples, -1, 1)
-        samples = (samples * 32767).astype(np.int16)
-
-        audio = AudioSegment(
-            samples.tobytes(),
-            frame_rate=sr,
-            sample_width=2,
-            channels=1
-        )
-
-        audio = audio.set_frame_rate(24000)
-
-        audio.export(
-            final_file,
-            format="wav",
-            codec="pcm_s16le"
-        )
-
-async def text_to_speech(text, emotion="sad"):
-    print("Generating speech...")
-
+    Returns the path to the output WAV file.
+    """
+    logger.info("TTS (%s chars) …", len(text))
     loop = asyncio.get_event_loop()
+    path = await loop.run_in_executor(_executor, _synthesize_to_wav, text)
+    return path
 
-    await loop.run_in_executor(
-        executor,
-        _tts_blocking,
-        text,
-        emotion
-    )
 
-    return AUDIO_PATH
-# ─── MUSIC CONTROLS ─────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Playback helpers
+# ---------------------------------------------------------------------------
 
+def _play_blocking(path: str):
+    import pygame  # type: ignore
+    pygame.mixer.init()
+    pygame.mixer.music.load(path)
+    pygame.mixer.music.play()
+    while pygame.mixer.music.get_busy():
+        time.sleep(0.05)
+    pygame.mixer.music.unload()
+    logger.debug("Done playing: %s", path)
+
+
+async def play_audio(path: str = AUDIO_PATH):
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(_executor, _play_blocking, path)
+
+
+# ---------------------------------------------------------------------------
+# Music controls  (unchanged from original)
+# ---------------------------------------------------------------------------
 
 def pause_music():
-    global music_paused
-    if pygame.mixer.get_init() and pygame.mixer.music.get_busy():
-        pygame.mixer.music.pause()
-        music_paused = True
-        print("Music paused!")
-    else:
-        print("Nothing playing to pause!")
+    global _music_paused
+    try:
+        import pygame  # type: ignore
+        if pygame.mixer.get_init() and pygame.mixer.music.get_busy():
+            pygame.mixer.music.pause()
+            _music_paused = True
+            print("Music paused!")
+        else:
+            print("Nothing playing to pause!")
+    except Exception as exc:
+        logger.error("pause_music: %s", exc)
 
 
 def resume_music():
-    global music_paused
-    if pygame.mixer.get_init() and music_paused:
-        pygame.mixer.music.unpause()
-        music_paused = False
-        print("Music resumed!")
-    else:
-        print(f"Cannot resume! init={pygame.mixer.get_init()}, paused={music_paused}")
+    global _music_paused
+    try:
+        import pygame  # type: ignore
+        if pygame.mixer.get_init() and _music_paused:
+            pygame.mixer.music.unpause()
+            _music_paused = False
+            print("Music resumed!")
+        else:
+            print(f"Cannot resume! paused={_music_paused}")
+    except Exception as exc:
+        logger.error("resume_music: %s", exc)
 
 
 def stop_music():
-    global music_paused, music_playing
-    if pygame.mixer.get_init():
-        pygame.mixer.music.stop()
-        pygame.mixer.music.unload()
-        pygame.mixer.quit()
-        music_paused = False
-        music_playing = False
-        print("Music stopped!")
-    else:
-        print("Nothing to stop!")
+    global _music_paused, _music_playing
+    try:
+        import pygame  # type: ignore
+        if pygame.mixer.get_init():
+            pygame.mixer.music.stop()
+            pygame.mixer.music.unload()
+            pygame.mixer.quit()
+            _music_paused  = False
+            _music_playing = False
+            print("Music stopped!")
+        else:
+            print("Nothing to stop!")
+    except Exception as exc:
+        logger.error("stop_music: %s", exc)
 
 
-# async def test_tts():
-#      await text_to_speech("Hello! I am Nova, your personal assistant. How can I help you today?")
+# ---------------------------------------------------------------------------
+# Convenience re-exports  (so callers can do: from app.tts.tts_engine import speak)
+# ---------------------------------------------------------------------------
 
-# if __name__ == "__main__":
-#     asyncio.run(test_tts())
+def speak(text: str, filler: str | None = None, speed: float = 1.0):
+    """Synchronous speak — wraps nepanglish_tts.speak()."""
+    from app.tts.nepanglish_tts import speak as _speak
+    _speak(text, filler=filler, speed=speed)
+
+
+def play_filler(name: str = "ah"):
+    from app.tts.fillers import play_filler as _pf
+    _pf(name)
+
+
+def render_fillers(fillers=None, force: bool = False):
+    from app.tts.fillers import render_fillers as _rf
+    _rf(fillers=fillers, force=force)

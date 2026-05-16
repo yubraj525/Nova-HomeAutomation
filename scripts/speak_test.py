@@ -1,64 +1,68 @@
 """
-speak_test.py — pass any Nepali / English / Nepanglish text and hear it.
+speak_test.py — Quick REPL for testing Nepanglish TTS
+=======================================================
+Run from project root:
+    python scripts/speak_test.py
 
-Usage:
-    venv\Scripts\python.exe scripts\speak_test.py
-
-Or import the function anywhere:
-    from scripts.speak_test import speak
-    speak("का छ खबर हजुर को?")
+Make sure you've downloaded the model first:
+    python scripts/download_tts_model.py
 """
+import sys
+import logging
+from pathlib import Path
 
-import sys, os, io, asyncio
+# Ensure project root is on path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-# Windows UTF-8 fix
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 
-# Add project root so imports work
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, ROOT)
+from app.tts.nepanglish_tts import speak, transliterate_mixed, get_synthesizer
 
-from app.tts.tts_engine import text_to_speech, play_audio
+DEMO_SENTENCES = [
+    "नमस्ते, मेरो नाम नोवा हो।",
+    "यो robot को speed बढाउ।",
+    "AC अन गर र light off गर।",
+    "Hello, how are you doing today?",
+    "आज २०२४ साल हो। मसँग 1500 रुपैयाँ छ।",
+]
 
+def run_demo():
+    print("\n━━━━━━  Nepanglish TTS Demo  ━━━━━━")
+    synth = get_synthesizer()  # pre-load model once
+    for sent in DEMO_SENTENCES:
+        print(f"\n▶  {sent}")
+        speak(sent)
+        print("   done.")
 
-# ─────────────────────────────────────────────
-# THE FUNCTION YOU ASKED FOR
-# ─────────────────────────────────────────────
-async def speak_async(text: str, emotion: str = "assistant"):
-    """Generate TTS for *text* and play it immediately."""
-    print(f"\n[Nova speaks] {text}")
-    audio_file = await text_to_speech(text, emotion)
-    await play_audio(audio_file)
+def run_repl():
+    print("\n━━━━━━  Nepanglish TTS REPL  ━━━━━━")
+    print("Type a sentence → hear it.  'demo' → run samples.  'quit' → exit.\n")
+    print("Slash commands:  /tr <text>  (show transliteration only)\n")
 
+    synth = get_synthesizer()  # pre-load model once
 
-def speak(text: str, emotion: str = "assistant"):
-    """
-    Synchronous wrapper — call this from anywhere, no async needed.
+    while True:
+        try:
+            line = input(">>> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nBye!")
+            break
 
-    speak("का छ खबर हजुर को? खाना खानु भो?")
-    speak("Hello, I am Nova.")
-    speak("यो robot को speed बढाउ।")
-    """
-    asyncio.run(speak_async(text, emotion))
+        if not line:
+            continue
+        if line in ("quit", "q", "exit"):
+            break
+        if line == "demo":
+            run_demo()
+            continue
+        if line.startswith("/tr "):
+            print(" →", transliterate_mixed(line[4:]))
+            continue
 
+        speak(line)
 
-# ─────────────────────────────────────────────
-# DEMO — runs when you execute this file
-# ─────────────────────────────────────────────
 if __name__ == "__main__":
-    demos = [
-        # Natural conversational Nepali
-        ("का छ खबर हजुर को?",                              "assistant"),
-        ("खाना खानु भो? राम्रोसँग खानुस् है।",              "friendly"),
-        ("आज मौसम एकदमै राम्रो छ, हैन र?",               "cheerful"),
-        ("म नोवा हुँ, तपाईंको सहायक।",                    "assistant"),
-        # Nepanglish
-        ("तपाईंको room को light off गर्दिन् है?",          "assistant"),
-        ("Robot को speed थोडा बढाउनु पर्ला।",              "serious"),
-        # Pure English
-        ("Good morning! How can I help you today?",        "friendly"),
-    ]
-
-    for text, emotion in demos:
-        speak(text, emotion)
-
+    if "--demo" in sys.argv:
+        run_demo()
+    else:
+        run_repl()
