@@ -5,6 +5,7 @@ from app.pipeline.process_transcript import handle_command
 from app.tts.tts_engine import pause_music, play_audio, resume_music, stop_music, text_to_speech
 from app.llm.groq import groq_llm_json
 from app.audio.player import download_and_play
+from app.tts.tts_kokoro_english import stream_tts
 
 
 def _transcribe(audio_path: str = "data/output_audio/speech.wav") -> str:
@@ -37,11 +38,13 @@ async def process_audio():
     # 1. Speak the response if present
     reply = response.get('response', '')
     if reply.strip():
+
         print(f"Nova says: {reply}")
         file = await text_to_speech(reply)
-        await play_audio(file)
-        # from app.communication.websocket import stream_audio
-        # await stream_audio()
+        # await play_audio(file)
+        # stream_tts(reply)
+        from app.communication.websocket import stream_audio
+        await stream_audio()
     
     # 2. Handle commands (Music, Lights, etc.)
     if response.get('type') == 'command':
