@@ -29,3 +29,5 @@ pytest>=8.0.0
 # Removed (replaced by offline Piper engine):
 # edge-tts          — was used for cloud Nepali TTS
 # kokoro-onnx       — was used for English Kokoro TTS
+
+#3.11.9 python version 
