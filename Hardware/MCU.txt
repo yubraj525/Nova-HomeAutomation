@@ -3,7 +3,7 @@ Accompolished
 kws--> live streamaudio --> server capture speech part --> transcribe --> process --> //(command and response )) live stream audio->--> speaker
 
 to resolve esp quick restart -- small speaker -- latency removal -- offline -- Nepali 
-
+for TinyML voicedetection https://youtu.be/gJumlH3rfMo?si=2QYkP10YiN_eqfEr
 
 #include <Voice_-Assistnce_kws_inferencing.h>
 #include "freertos/FreeRTOS.h"
