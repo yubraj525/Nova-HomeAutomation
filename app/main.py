@@ -3,6 +3,10 @@ import asyncio
 import uvicorn
 import websockets
 from fastapi import FastAPI
+from app.agent.ToolRouter import ToolRouter
+from app.agent.registery import ToolRegistry
+from app.agent.tools.calculator import CalculatorTool
+from app.agent.tools.currenTime import GetTimeTool
 from app.audio.player import download_and_play
 from config.config import PORT_API, PORT_WS
 from app.communication.websocket import handle_client
@@ -88,10 +92,27 @@ async def test():
 #         # asyncio.create_task(text_to_speech(response['response']))
 
 # local ai reponse 
+def create_tool_registry():
+    registry = ToolRegistry()
+
+    registry.register(CalculatorTool())
+    registry.register(GetTimeTool())
+    
+
+    return registry
+
 
 
 async def main():
     # Start WebSocket server
+    registery = create_tool_registry()
+    registery.list_tools()
+    tool_schemas = registery.get_tool_schemas()
+    print("Registered tool schemas:", tool_schemas)
+    router = ToolRouter(registery)
+    print("Tool router initialized with tools:", [tool.name for tool in registery.list_tools()])
+
+
     print("Nova server starting...")
     ws_server = websockets.serve(handle_client, "0.0.0.0", PORT_WS)
 

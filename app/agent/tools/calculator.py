@@ -1,7 +1,14 @@
 from app.agent.base import Tool
+from pydantic import BaseModel
+class CalculatorArgs(BaseModel):
+    a: float
+    b: float
+    operation: str
+
 class CalculatorTool(Tool):
     name = "calculator"
     description = "Perform basic arithmetic."
+    arguments_model = CalculatorArgs
 
     async def execute(self, arguments):
         a = arguments["a"]

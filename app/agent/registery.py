@@ -18,3 +18,9 @@ class ToolRegistry:
 
     def list_tools(self) -> list[Tool]:
         return list(self._tools.values())
+    
+    def get_tool_schemas(self):
+        return [
+        tool.schema()
+        for tool in self._tools.values()
+    ]
