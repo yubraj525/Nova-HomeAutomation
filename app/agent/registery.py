@@ -19,8 +19,12 @@ class ToolRegistry:
     def list_tools(self) -> list[Tool]:
         return list(self._tools.values())
     
-    def get_tool_schemas(self):
-        return [
-        tool.schema()
-        for tool in self._tools.values()
-    ]
+    
+    def print_tools(self):
+     for tool in self._tools.values():
+
+        print(
+            f"Name: {tool.name}\n"
+            f"Description: {tool.description}\n"
+            f"Arguments: {tool.arguments_model.model_json_schema()}\n"
+        )

@@ -107,8 +107,9 @@ async def main():
     # Start WebSocket server
     registery = create_tool_registry()
     registery.list_tools()
-    tool_schemas = registery.get_tool_schemas()
-    print("Registered tool schemas:", tool_schemas)
+    tools_schema= registery.print_tools()
+    
+
     router = ToolRouter(registery)
     print("Tool router initialized with tools:", [tool.name for tool in registery.list_tools()])
 
