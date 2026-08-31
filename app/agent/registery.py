@@ -2,6 +2,7 @@ from .base import Tool
 
 
 class ToolRegistry:
+
     def __init__(self):
         self._tools: dict[str, Tool] = {}
 
@@ -18,21 +19,26 @@ class ToolRegistry:
 
     def list_tools(self) -> list[Tool]:
         return list(self._tools.values())
-    
-    
+
     def print_tools(self):
-     for tool in self._tools.values():
-        print(f"\nTool: {tool.name}")
-        print(f"Description: {tool.description}")
+        for tool in self._tools.values():
+            print(f"\nTool: {tool.name}")
+            print(f"Description: {tool.description}")
 
-        print("Arguments:")
+            print("Arguments:")
 
-        fields = tool.arguments_model.model_fields
+            fields = tool.arguments_model.model_fields
 
-        if not fields:
-            print("  None")
-        else:
-            for name, field in fields.items():
-                print(f"  - {name}: {field.annotation}")
+            if not fields:
+                print("  None")
+            else:
+                for name, field in fields.items():
+                    print(f"  - {name}: {field.annotation}")
 
-        print("-" * 40)
+            print("-" * 40)
+
+    def get_tool_schemas(self):
+        return [
+            tool.schema()
+            for tool in self._tools.values()
+        ]

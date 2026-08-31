@@ -16,13 +16,13 @@ class CalculatorTool(Tool):
 
         operation = arguments["operation"]
 
-        if operation == "add":
+        if operation == "+":
             return a + b
-        elif operation == "subtract":
+        elif operation == "-":
             return a - b
-        elif operation == "multiply":
+        elif operation == "*" :
             return a * b
-        elif operation == "divide":
+        elif operation == "/" :
             if b == 0:
                 raise ValueError("Cannot divide by zero")
             return a / b
