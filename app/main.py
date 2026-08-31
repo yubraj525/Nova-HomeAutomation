@@ -111,8 +111,7 @@ async def main():
     
 
     router = ToolRouter(registery)
-    print("Tool router initialized with tools:", [tool.name for tool in registery.list_tools()])
-
+ 
 
     print("Nova server starting...")
     ws_server = websockets.serve(handle_client, "0.0.0.0", PORT_WS)

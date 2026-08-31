@@ -3,8 +3,7 @@ from app.agent.base import Tool
 from pydantic import BaseModel
 
 class GetTimeArgs(BaseModel):
-  name: str 
-  description: str 
+    pass  # No arguments needed for this tool
 
 class GetTimeTool(Tool):
     name = "get_time"

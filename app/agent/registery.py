@@ -22,9 +22,17 @@ class ToolRegistry:
     
     def print_tools(self):
      for tool in self._tools.values():
+        print(f"\nTool: {tool.name}")
+        print(f"Description: {tool.description}")
 
-        print(
-            f"Name: {tool.name}\n"
-            f"Description: {tool.description}\n"
-            f"Arguments: {tool.arguments_model.model_json_schema()}\n"
-        )
+        print("Arguments:")
+
+        fields = tool.arguments_model.model_fields
+
+        if not fields:
+            print("  None")
+        else:
+            for name, field in fields.items():
+                print(f"  - {name}: {field.annotation}")
+
+        print("-" * 40)
