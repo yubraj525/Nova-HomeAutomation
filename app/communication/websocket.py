@@ -39,6 +39,7 @@ async def handle_client(websocket):
             # process incoming audio frames
 
             if isinstance(message, bytes):
+                
                 await detect_speech(message)
 
     except websockets.exceptions.ConnectionClosed:

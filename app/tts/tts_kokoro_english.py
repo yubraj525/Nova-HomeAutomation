@@ -89,20 +89,3 @@ def stream_tts(text):
         audio_queue.put((samples, sr))
 
     print("\nTOTAL TIME:", round(time.time() - start_total, 2), "s")
-
-# =========================================================
-# TEST RUN
-# =========================================================
-
-if __name__ == "__main__":
-
-    test_text = (
-        "Hello Yubraj. "
-        "This is a realtime Kokoro streaming test. "
-        "Your assistant architecture is working nicely. "
-        "We are testing low latency speech generation."
-    )
-
-    stream_tts(test_text)
-
-    input("\nPress Enter to exit...\n")
