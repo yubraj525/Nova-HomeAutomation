@@ -210,6 +210,7 @@
 
 
 # ------------------------------- this do wokrk but gen a twice long audio file
+import asyncio
 import numpy as np
 
 from app.audio.chunk import AudioChunk
@@ -217,8 +218,11 @@ from app.audio.chunk import AudioChunk
 
 def synthesize_to_chunks(text: str):
     """
-    Generate TTS sentence-by-sentence and yield AudioChunk objects.
+    Generate TTS chunks and yield AudioChunk objects.
     """
+
+    print(f"[TTS] synthesize_to_chunks CALLED | text={text!r}")
+
     from app.tts.nepanglish_tts import get_synthesizer
 
     synth = get_synthesizer()
@@ -226,6 +230,7 @@ def synthesize_to_chunks(text: str):
     sequence = 0
 
     for samples in synth.synthesize_stream(text):
+
         if samples is None or len(samples) == 0:
             continue
 
@@ -241,25 +246,25 @@ def synthesize_to_chunks(text: str):
             sequence=sequence,
         )
 
+        print(
+            f"[TTS] synthesized chunk "
+            f"{chunk.sequence} | "
+            f"{chunk.duration:.3f}s | "
+            f"data={len(chunk.data)} bytes"
+        )
+
         sequence += 1
 
         yield chunk
-        
-import asyncio
-
-from app.audio.queuey import AudioQueue
-
 
 import asyncio
-
 from app.audio.queuey import AudioQueue
-
-
 async def synthesize_to_queue(text: str, queue: AudioQueue):
 
     loop = asyncio.get_running_loop()
 
     def produce():
+
         for chunk in synthesize_to_chunks(text):
 
             future = asyncio.run_coroutine_threadsafe(
@@ -267,7 +272,7 @@ async def synthesize_to_queue(text: str, queue: AudioQueue):
                 loop,
             )
 
-            # Wait until the chunk is actually inserted
+            # Wait until chunk is actually inserted
             future.result()
 
             print(
@@ -278,20 +283,6 @@ async def synthesize_to_queue(text: str, queue: AudioQueue):
             )
 
     await asyncio.to_thread(produce)
-    """
-    Generate TTS chunks and put them into the AudioQueue.
-    """
-
-    for chunk in synthesize_to_chunks(text):
-        await queue.put(chunk)
-
-        print(
-            f"[TTS] queued chunk "
-            f"{chunk.sequence} | "
-            f"{chunk.duration:.3f}s | "
-            f"queue={queue.qsize()}"
-        )
-
 
 
 
