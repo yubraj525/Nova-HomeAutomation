@@ -201,6 +201,15 @@
 
 
 
+
+
+
+
+
+
+
+
+# ------------------------------- this do wokrk but gen a twice long audio file
 import numpy as np
 
 from app.audio.chunk import AudioChunk
@@ -241,7 +250,34 @@ import asyncio
 from app.audio.queuey import AudioQueue
 
 
+import asyncio
+
+from app.audio.queuey import AudioQueue
+
+
 async def synthesize_to_queue(text: str, queue: AudioQueue):
+
+    loop = asyncio.get_running_loop()
+
+    def produce():
+        for chunk in synthesize_to_chunks(text):
+
+            future = asyncio.run_coroutine_threadsafe(
+                queue.put(chunk),
+                loop,
+            )
+
+            # Wait until the chunk is actually inserted
+            future.result()
+
+            print(
+                f"[TTS] queued "
+                f"chunk {chunk.sequence} | "
+                f"{chunk.duration:.3f}s | "
+                f"queue={queue.qsize()}"
+            )
+
+    await asyncio.to_thread(produce)
     """
     Generate TTS chunks and put them into the AudioQueue.
     """
@@ -255,3 +291,14 @@ async def synthesize_to_queue(text: str, queue: AudioQueue):
             f"{chunk.duration:.3f}s | "
             f"queue={queue.qsize()}"
         )
+
+
+
+
+
+
+
+
+
+
+

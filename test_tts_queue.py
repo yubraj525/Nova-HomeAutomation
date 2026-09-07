@@ -183,12 +183,7 @@ async def main():
     transport = LocalAudioTransport()
 
     text = """
-    नमस्ते, आज मौसम निकै राम्रो छ। म तिमीलाई आजको दिनको बारेमा केही कुरा बताउन चाहन्छु।
-    बिहानको मौसम शान्त थियो र अहिले पनि बाहिरको वातावरण निकै रमाइलो देखिन्छ।
-    यदि तिमीलाई कुनै काम गर्न मन छ भने म त्यसमा पनि सहयोग गर्न सक्छु।
-    How are you today? I hope you are having a great day.
-    We can continue talking about anything you want, and I will try my best to help you.
-    """
+  म ठिक छु, तिमी कस्तो छौ?"""
 
     producer = asyncio.create_task(synthesize_to_queue(text, queue))
 
