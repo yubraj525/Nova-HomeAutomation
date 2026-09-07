@@ -177,43 +177,72 @@ class TimingAudioQueue(AudioQueue):
 
 
 async def main():
-    start_time = time.perf_counter()
+    from app.tts.nepanglish_tts import get_synthesizer
 
-    queue = TimingAudioQueue()
-    transport = LocalAudioTransport()
+    # Load synthesizer once
+    synthesizer = get_synthesizer()
 
-    text = """
-  म ठिक छु, तिमी कस्तो छौ?"""
+    while True:
+        text = await asyncio.to_thread(input, "\nYou: ")
 
-    producer = asyncio.create_task(synthesize_to_queue(text, queue))
+        if text.strip().lower() == "exit":
+            break
 
-    consumer = asyncio.create_task(consume_audio(queue, transport))
+        if not text.strip():
+            continue
 
-    # Wait for the first chunk to be picked up by the consumer
-    await first_chunk_event.wait()
-    latency_ms = (ttfa_time - start_time) * 1000
-    print(f"\n[LATENCY] Time to First Audio (TTFA): {latency_ms:.2f} ms\n")
+        start_time = time.perf_counter()
 
-    await producer
-    print("[TTS] producer finished")
+        queue = TimingAudioQueue()
+        transport = LocalAudioTransport()
 
-    await queue.join()
-    print("[QUEUE] all chunks consumed")
+        producer = asyncio.create_task(
+            synthesize_to_queue(
+                text,
+                queue,
+                synthesizer
+            )
+        )
 
-    await transport.end()
+        consumer = asyncio.create_task(
+            consume_audio(queue, transport)
+        )
 
-    consumer.cancel()
+        # Wait for first chunk
+        await first_chunk_event.wait()
 
-    try:
-        await consumer
-    except asyncio.CancelledError:
-        pass
+        latency_ms = (ttfa_time - start_time) * 1000
 
-    end_time = time.perf_counter()
+        print(
+            f"\n[LATENCY] Time to First Audio (TTFA): "
+            f"{latency_ms:.2f} ms\n"
+        )
 
-    print("[TEST] finished")
-    print(f"[TIME] total duration: {end_time - start_time:.3f} seconds")
+        await producer
+        print("[TTS] producer finished")
+
+        await queue.join()
+        print("[QUEUE] all chunks consumed")
+
+        await transport.end()
+
+        consumer.cancel()
+
+        try:
+            await consumer
+        except asyncio.CancelledError:
+            pass
+
+        end_time = time.perf_counter()
+
+        print("[TEST] finished")
+        print(
+            f"[TIME] total duration: "
+            f"{end_time - start_time:.3f} seconds"
+        )
 
 
+if __name__ == "__main__":
+    asyncio.run(main())
 if __name__ == "__main__":
     asyncio.run(main())

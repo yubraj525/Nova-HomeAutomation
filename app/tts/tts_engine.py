@@ -216,16 +216,16 @@ import numpy as np
 from app.audio.chunk import AudioChunk
 
 
-def synthesize_to_chunks(text: str):
+def synthesize_to_chunks(text: str, synth=None):
     """
     Generate TTS chunks and yield AudioChunk objects.
     """
 
     print(f"[TTS] synthesize_to_chunks CALLED | text={text!r}")
 
-    from app.tts.nepanglish_tts import get_synthesizer
+    
 
-    synth = get_synthesizer()
+    # synth = get_synthesizer()
 
     sequence = 0
 
@@ -259,13 +259,13 @@ def synthesize_to_chunks(text: str):
 
 import asyncio
 from app.audio.queuey import AudioQueue
-async def synthesize_to_queue(text: str, queue: AudioQueue):
+async def synthesize_to_queue(text: str, queue: AudioQueue,synth=None):
 
     loop = asyncio.get_running_loop()
 
     def produce():
 
-        for chunk in synthesize_to_chunks(text):
+        for chunk in synthesize_to_chunks(text,synth=synth):
 
             future = asyncio.run_coroutine_threadsafe(
                 queue.put(chunk),

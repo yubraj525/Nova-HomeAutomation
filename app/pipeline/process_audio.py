@@ -157,8 +157,6 @@ async def process_audio():
     if reply.strip():
 
         print(f"Nova says: {reply}")
-<<<<<<< Updated upstream
-=======
         file = await text_to_speech(reply)
         # await play_audio(file)
         from app.communication.websocket import stream_audio
@@ -168,7 +166,6 @@ async def process_audio():
     if response.get('type') == 'command':
         target = response.get('target')
         action = response.get('action')
->>>>>>> Stashed changes
 
         # -----------------------------------------------------
         # Create audio queue
