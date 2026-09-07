@@ -82,8 +82,8 @@ async def broadcast(data):
 
 
 def get_WSconnection():
+    print(f"[WS] current connection = {ws}")
     return ws
-
 
 async def stream_audio(AUDIO_FILE="data/output_audio/response.wav"):
     websocket = get_WSconnection()
