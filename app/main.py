@@ -13,7 +13,7 @@ from app.communication.websocket import handle_client
 from app.tts.speak import speak
 # Load model once at startup
 from app.audio.local_transport import LocalAudioTransport
-
+from app.communication.websocket_transport import WebSocketAudioTransport
 app = FastAPI()
 
 
@@ -112,11 +112,7 @@ async def main():
 
     router = ToolRouter(registery)
     from app.tts.nepanglish_tts import get_synthesizer
-    synthesizer = get_synthesizer()
-    transport = LocalAudioTransport()
-    from app.pipeline.process_audio import ProcessAudio
-    process_audio = ProcessAudio(synthesizer, transport)
- 
+   
 
     print("Nova server starting...")
     async def ws_handler(websocket):
@@ -138,6 +134,19 @@ async def main():
 
     print(f"WebSocket running on port {PORT_WS}")
     print(f"API running on port {PORT_API}")
+    synthesizer = get_synthesizer()
+    from app.communication.websocket import (
+    handle_client,
+    get_WSconnection,
+)
+
+    from app.communication.websocket_transport import WebSocketAudioTransport 
+    transport = WebSocketAudioTransport(
+    get_WSconnection
+)
+    from app.pipeline.process_audio import ProcessAudio
+    process_audio = ProcessAudio(synthesizer, transport)
+
     # await download_and_play("never gonna give you up")
 
     async with ws_server:
