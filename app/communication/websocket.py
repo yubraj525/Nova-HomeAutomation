@@ -21,7 +21,7 @@ SPEECH_CONFIRM_FRAMES = 5
 SILENCE_LIMIT = int(2000 / FRAME_MS)
 
 
-async def handle_client(websocket):
+async def handle_client(websocket, process_audio):
     global ws
     ws = websocket
     clients.add(websocket)
@@ -40,7 +40,7 @@ async def handle_client(websocket):
 
             if isinstance(message, bytes):
                 
-                await detect_speech(message)
+                await detect_speech(message,process_audio  )
 
     except websockets.exceptions.ConnectionClosed:
         print("ESP disconnected")

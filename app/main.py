@@ -119,7 +119,18 @@ async def main():
  
 
     print("Nova server starting...")
-    ws_server = websockets.serve(handle_client, "0.0.0.0", PORT_WS)
+    async def ws_handler(websocket):
+        await handle_client(
+            websocket,
+            process_audio
+        )
+
+    # Start websocket
+    ws_server = websockets.serve(
+        ws_handler,
+        "0.0.0.0",
+        PORT_WS
+    )
 
     # Start FastAPI server
     api_server = uvicorn.Server(uvicorn.Config(app, host="192.168.1.72", port=PORT_API))
