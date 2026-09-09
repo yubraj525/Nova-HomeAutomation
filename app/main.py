@@ -10,9 +10,9 @@ from app.agent.tools.currenTime import GetTimeTool
 from app.audio.player import download_and_play
 from config.config import PORT_API, PORT_WS
 from app.communication.websocket import handle_client
-
+from app.tts.speak import speak
 # Load model once at startup
-
+from app.audio.local_transport import LocalAudioTransport
 
 app = FastAPI()
 
@@ -111,19 +111,23 @@ async def main():
     
 
     router = ToolRouter(registery)
+    from app.tts.nepanglish_tts import get_synthesizer
+    synthesizer = get_synthesizer()
+    transport = LocalAudioTransport()
+    from app.pipeline.process_audio import ProcessAudio
+    process_audio = ProcessAudio(synthesizer, transport)
  
 
     print("Nova server starting...")
     ws_server = websockets.serve(handle_client, "0.0.0.0", PORT_WS)
 
     # Start FastAPI server
-    api_server = uvicorn.Server(uvicorn.Config(app, host="192.168.1.70", port=PORT_API))
+    api_server = uvicorn.Server(uvicorn.Config(app, host="192.168.1.72", port=PORT_API))
 
 
     print(f"WebSocket running on port {PORT_WS}")
     print(f"API running on port {PORT_API}")
     # await download_and_play("never gonna give you up")
-
 
     async with ws_server:
         await api_server.serve()

@@ -4,7 +4,7 @@ from collections import deque
 import numpy as np
 import webrtcvad
 
-from app.pipeline.process_audio import process_audio
+from app.pipeline.process_audio import ProcessAudio
 from app.audio.utils import save_audio
 
 # speech_active = False
@@ -181,7 +181,7 @@ async def detect_speech(audio_data):
                 from app.communication.websocket import send_websocket_message
                 await send_websocket_message("stop_stream")
 
-                await process_audio()
+                await ProcessAudio.process_audio()
 
                 speech_active = False
                 silence_frames = 0
