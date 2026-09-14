@@ -9,6 +9,7 @@ class CalculatorTool(Tool):
     name = "calculator"
     description = "Perform basic arithmetic."
     arguments_model = CalculatorArgs
+    executor = None
 
     async def execute(self, arguments):
         a = arguments["a"]

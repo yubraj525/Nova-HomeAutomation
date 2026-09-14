@@ -21,21 +21,36 @@ class ToolRegistry:
         return list(self._tools.values())
 
     def print_tools(self):
-        for tool in self._tools.values():
-            print(f"\nTool: {tool.name}")
-            print(f"Description: {tool.description}")
-
-            print("Arguments:")
-
-            fields = tool.arguments_model.model_fields
-
-            if not fields:
-                print("  None")
-            else:
-                for name, field in fields.items():
-                    print(f"  - {name}: {field.annotation}")
-
-            print("-" * 40)
+     for tool in self._tools.values():
+         print(f"\nTool: {tool.name}")
+         print(f"Description: {tool.description}")
+ 
+         # Case 1: Pydantic model structure
+         if getattr(tool, "arguments_model", None):  
+             print("Arguments:")
+             fields = tool.arguments_model.model_fields
+             if not fields:
+                 print("  None")
+             else:
+                 for name, field in fields.items():
+                     # Extract type name cleanly from annotation
+                     type_hint = getattr(field.annotation, "__name__", str(field.annotation))
+                     print(f"  - {name}: {type_hint}")
+ 
+         # Case 2: Raw dictionary parameters
+         elif getattr(tool, "parameters", None):
+             print("Parameters:")
+             params = tool.parameters
+             if not params:
+                 print("  None")
+             else:
+                 for name, value in params.items():
+                     print(f"  - {name}: {value}")
+         
+         else:
+             print("Parameters: None")
+ 
+         print("-" * 40)
 
     def get_tool_schemas(self):
         return [

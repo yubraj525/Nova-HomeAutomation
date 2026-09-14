@@ -12,6 +12,7 @@ class SystemInfoTool(Tool):
     name = "system_info"
     description = "Get information about the current system."
     arguments_model = SystemInfoArgs
+    executor = None
 
     async def execute(self, arguments):
         return {

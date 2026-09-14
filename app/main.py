@@ -3,6 +3,7 @@ import asyncio
 import uvicorn
 import websockets
 from fastapi import FastAPI
+from app.agent import registery
 from app.agent.ToolRouter import ToolRouter
 from app.agent.registery import ToolRegistry
 from app.agent.tools.calculator import CalculatorTool
@@ -93,6 +94,7 @@ async def test():
 
 # local ai reponse 
 def create_tool_registry():
+    print("Creating tool registry...")
     registry = ToolRegistry()
 
     registry.register(CalculatorTool())
@@ -106,11 +108,14 @@ def create_tool_registry():
 async def main():
     # Start WebSocket server
     registery = create_tool_registry()
-    registery.list_tools()
-    tools_schema= registery.print_tools()
+    print("Tool registry created.")
+    print("Registered tools:")
+    registery.print_tools()
+    
     
 
     router = ToolRouter(registery)
+    print("Tool router created.")
     from app.tts.nepanglish_tts import get_synthesizer
    
 
@@ -118,8 +123,11 @@ async def main():
     async def ws_handler(websocket):
         await handle_client(
             websocket,
-            process_audio
+            process_audio,
+            registery
         )
+        
+    
 
     # Start websocket
     ws_server = websockets.serve(
@@ -141,11 +149,30 @@ async def main():
 )
 
     from app.communication.websocket_transport import WebSocketAudioTransport 
-    transport = WebSocketAudioTransport(
-    get_WSconnection
-)
+#     transport = WebSocketAudioTransport(
+#     get_WSconnection
+# )
+    transport =LocalAudioTransport()
     from app.pipeline.process_audio import ProcessAudio
     process_audio = ProcessAudio(synthesizer, transport)
+   
+    
+        
+    
+    # await process_audio.process_audio("What is the capital of Nepal?"); ## we have commected this as this is prodcution line but for hard test
+    # while True:
+    #     text = input("You: ").strip()
+
+    #     if not text:
+    #         continue
+
+    #     if text.lower() in {"exit", "quit"}:
+    #         print("Stopping...")
+    #         break
+
+    # await process_audio.process_audio("What is the capital of Nepal?")  # Hardcoded test for now
+    
+   
 
     # await download_and_play("never gonna give you up")
 

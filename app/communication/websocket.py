@@ -5,6 +5,11 @@ import webrtcvad
 import websockets
 
 from app.vad.vad_detection import detect_speech
+from app.agent.registery import ToolRegistry
+from app.agent.remoteToolRegistry import RemoteTool
+from app.agent.registery import ToolRegistry
+
+
 
 CHUNK_SIZE = 512  # Larger chunks are more efficient for Wi-Fi
 AUDIO_FILE = "data/output_audio/response.wav"  # For testing streaming to ESP32
@@ -23,105 +28,177 @@ pc_clients = {}     # { "pc_name": websocket_instance }
 esp_clients = set()  # Set of ESP websocket instances
 clients = set()
 
-async def handle_client(websocket, process_audio):
+async def handle_client(websocket, process_audio, tool_registry: ToolRegistry):
     clients.add(websocket)
-    
-    # Assume connection is ESP32 by default
-    client_type = "esp"  
-    client_name = None
 
-    # Store ESP instance immediately on connection
-    esp_clients.add(websocket)
-    print(f"[ESP] Connected & Stored Instance (Total ESPs: {len(esp_clients)})")
+    client_type = "esp"
+    client_name = None
 
     try:
         async for message in websocket:
 
-            # -----------------------------------------------------------
-            # 1. HANDLE TEXT / JSON MESSAGES
-            # -----------------------------------------------------------
             if isinstance(message, str):
+
                 try:
                     data = json.loads(message)
                 except json.JSONDecodeError:
                     data = None
 
-                if data and isinstance(data, dict):
+                if isinstance(data, dict):
+                  
+
                     msg_type = data.get("type")
 
-                    # PC Registration (Explicit type check prevents infinite registration loops)
-                    if msg_type == "register" and client_type != "pc":
-                        client_type = "pc"
-                        client_name = data.get("client_name") or data.get("client_id") or "unknown_pc"
+                    # =========================
+                    # REGISTER
+                    # =========================
+                    if msg_type == "register":
 
-                        # Remove from ESP storage since it's a PC
-                        esp_clients.discard(websocket)
+                        client_type = data.get(
+                            "client_type",
+                            "esp"
+                        )
 
-                        # Store PC instance
-                        pc_clients[client_name] = websocket
-                        print(f"[PC] Connected & Registered: {client_name}")
+                        client_name = data.get(
+                            "client_name"
+                        )
 
-                        # Request tools from PC ONCE upon registration
-                        await websocket.send(json.dumps({"type": "request_tools"}))
-                        print(f"[PC] Sent 'request_tools' to {client_name}")
+                        if client_type == "pc" and client_name:
+
+                            pc_clients[client_name] = {
+                                "websocket": websocket,
+                                "tools": []
+                            }
+
+                            print(
+                                f"[PC] Connected: {client_name}"
+                            )
+
+                            await websocket.send(
+                                json.dumps({
+                                    "type": "request_tools"
+                                })
+                            )
+
+                            print(
+                                f"[PC] Total connected: "
+                                f"{len(pc_clients)}"
+                            )
+
                         continue
 
-                    # PC Tools List Response
-                    if msg_type == "response_tools":
-                        tools = data.get("tools")
-                        print(f"\n==================== [PC: {client_name} Tools Registered] ====================")
+                    # =========================
+                    # RESPONSE TO request_tools
+                    # =========================
+                    elif msg_type == "response_tools":
 
-                        for tool in tools:
-                             name = tool.get("name", "Unknown")
-                             description = tool.get("description", "No description provided.")
-                             params = tool.get("parameters", {}).get("properties", {})
-                             required = tool.get("parameters", {}).get("required", [])
+                        if client_type == "pc" and client_name:
 
-                             print(f"\n🛠️  {name}")
-                             print(f"   Description: {description}")
+                            tools = data.get(
+                                "tools",
+                                []
+                            )
+                            
 
-                             if params:
-                                 param_list = []
-                                 for param_name, param_info in params.items():
-                                     is_req = "*" if param_name in required else ""
-                                     param_type = param_info.get("type", "any")
-                                     param_list.append(f"{param_name}{is_req} ({param_type})")
+                            
+                            # pc_clients[client_name]["tools"] = tools
+                            # remote_tool_registry = RemoteTool()
+                            
+                            # remote_tool_registry.register_tools(
+                            #             tools=tools,
+                            #             websocket=websocket,
+                            #             client_name=client_name,
+                                    # )
+                              
+                            print(f"printing tools before registring remote tools")
+                            tool_registry.print_tools()
+                            
+                            for tool_data in tools:
+                                
+                                
+                                remote_tool = RemoteTool(
+                                    name=tool_data["name"],
+                                    description=tool_data.get("description", ""),
+                                    parameters=tool_data.get("parameters", {}),
+                                    websocket=websocket,
+                                    client_name=client_name,
+                                )
 
-                                 print(f"   Parameters:  {', '.join(param_list)}  [*=required]")
+                                tool_registry.register(remote_tool)
 
-                        print("\n===============================================================================\n")
+                            print(
+                                f"[PC] Tools received from "
+                                f"{client_name}: "
+                                f"{len(tools)}"
+                            )
+                        # tools_schema = tool_registry.get_tool_schemas()
+                        # print(f"[PC] Tools schema: {json.dumps(tools_schema, indent=2)}")
+                        tools_schema = tool_registry.print_tools();
                         continue
-                        
+                    
 
-                # Handle simple raw text signals (ESP32)
-                if message == "play_test":
-                    await stream_audio()
-                elif message == "Hello from ESP":
-                    print("[ESP] Received greeting from ESP!")
 
-            # -----------------------------------------------------------
-            # 2. HANDLE BINARY MESSAGES (Audio Stream from ESP32)
-            # -----------------------------------------------------------
+
+                # =========================
+                # ESP32 TEXT MESSAGES
+                # =========================
+                if client_type == "esp":
+
+                    if websocket not in esp_clients:
+                        esp_clients.add(websocket)
+
+                        print(
+                            f"[ESP] Connected "
+                            f"(Total ESP32: "
+                            f"{len(esp_clients)})"
+                        )
+
+                    if message == "play_test":
+                        await stream_audio()
+
+                    elif message == "Hello from ESP":
+                        print("[ESP] Received greeting")
+
+            # =========================
+            # ESP32 AUDIO
+            # =========================
             elif isinstance(message, bytes):
-                if client_type == "pc":
-                    print(f"[PC {client_name}] Unexpected binary data ignored.")
-                    continue
 
-                await detect_speech(message, process_audio)
+                if client_type == "esp":
+                    await detect_speech(
+                        message,
+                        process_audio
+                    )
 
     except websockets.exceptions.ConnectionClosed:
-        print(f"[WS] Disconnected: type={client_type}, name={client_name}")
+
+        print(
+            f"[WS] Disconnected: "
+            f"type={client_type}, "
+            f"name={client_name}"
+        )
 
     finally:
-        # CLEANUP: Remove instances from storage on disconnect
+
         clients.discard(websocket)
-        
-        if client_type == "esp":
+
+        if client_type == "pc" and client_name:
+
+            pc_clients.pop(
+                client_name,
+                None
+            )
+
+            print(
+                f"[PC] Removed: {client_name}"
+            )
+
+        elif client_type == "esp":
+
             esp_clients.discard(websocket)
-            print("[ESP] Disconnected & Removed Instance")
-        elif client_type == "pc" and client_name:
-            pc_clients.pop(client_name, None)
-            print(f"[PC] Removed Instance: {client_name}")
+
+            print("[ESP] Removed")
+
 async def send_websocket_message(message):
     global ws
     if ws is None:
