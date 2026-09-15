@@ -34,13 +34,25 @@ class PendingRequests:
     
             return request_id, future
     def resolve(self, request_id: str, result):
-        future = self._requests.pop(request_id, None)
+        request = self._requests.pop(request_id, None)
 
-        if future and not future.done():
+        if request is None:
+            print(f"[PendingRequests] Unknown request: {request_id}")
+            return
+
+        future = request["future"]
+
+        if not future.done():
             future.set_result(result)
 
     def reject(self, request_id: str, error):
-        future = self._requests.pop(request_id, None)
-
-        if future and not future.done():
+        request = self._requests.pop(request_id, None)
+    
+        if request is None:
+            print(f"[PendingRequests] Unknown request: {request_id}")
+            return
+    
+        future = request["future"]
+    
+        if not future.done():
             future.set_exception(RuntimeError(error))

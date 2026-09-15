@@ -42,6 +42,7 @@ async def handle_client(websocket, process_audio, tool_registry: ToolRegistry):
 
                 try:
                     data = json.loads(message)
+                    print(f"[WS] Received JSON: {data}")
                 except json.JSONDecodeError:
                     data = None
 
@@ -91,7 +92,7 @@ async def handle_client(websocket, process_audio, tool_registry: ToolRegistry):
                     # =========================
                     # RESPONSE TO request_tools
                     # =========================
-                    elif msg_type == "response_tools":
+                    if msg_type == "response_tools":
                      if client_type == "pc" and client_name:
                          tools = data.get("tools", [])
 
@@ -127,7 +128,29 @@ async def handle_client(websocket, process_audio, tool_registry: ToolRegistry):
                         #  print(f"[PC] Clean LLM Tools Schema: {json.dumps(tools_schema, indent=2)}")
 
                          continue
+                    if msg_type == "response_execute_tool":
+                        request_id = data.get("request_id")
+                        result = data.get("result")
+                        error = data.get("error")
+                        print(
+                            f"[PC] Received execution response for request_id={request_id}: "
+                            f"result={result}, error={error}"
+                        )
+                        
 
+                        if request_id:
+                            if error:
+                                tool_registry.pending_requests.reject(
+                                    request_id,
+                                    error
+                                )
+                            else:
+                                tool_registry.pending_requests.resolve(
+                                    request_id,
+                                    result
+                                )
+                        continue
+                    
                 # =========================
                 # ESP32 TEXT MESSAGES
                 # =========================
