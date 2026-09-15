@@ -5,6 +5,7 @@ import websockets
 from fastapi import FastAPI
 from app.agent import registery
 from app.agent.ToolRouter import ToolRouter
+from app.agent.pending_manager import PendingRequests
 from app.agent.registery import ToolRegistry
 from app.agent.tools.calculator import CalculatorTool
 from app.agent.tools.currenTime import GetTimeTool
@@ -109,12 +110,12 @@ async def main():
     # Start WebSocket server
     registery = create_tool_registry()
     print("Tool registry created.")
-    print("Registered tools:")
-    registery.print_tools()
+  
     
     
 
-    router = ToolRouter(registery)
+    request_pending=PendingRequests()
+    router = ToolRouter(registery, request_pending)
     print("Tool router created.")
     from app.tts.nepanglish_tts import get_synthesizer
    
@@ -124,7 +125,8 @@ async def main():
         await handle_client(
             websocket,
             process_audio,
-            registery
+            registery,
+            request_pending
         )
         
     

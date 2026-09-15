@@ -56,3 +56,13 @@ class PendingRequests:
     
         if not future.done():
             future.set_exception(RuntimeError(error))
+            
+    def list(self):
+        return [
+            {
+                key: value
+                for key, value in request.items()
+                if key != "future"
+            }
+            for request in self._requests.values()
+        ]

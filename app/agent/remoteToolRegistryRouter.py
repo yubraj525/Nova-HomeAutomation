@@ -12,7 +12,7 @@ class RemoteTool(Tool):
         parameters,
         websocket,
         client_name,
-        requests_manager=PendingRequests(),
+        pending_requests: PendingRequests
     ):
         self.name = name
         self.description = description
@@ -20,7 +20,7 @@ class RemoteTool(Tool):
 
         self.websocket = websocket
         self.client_name = client_name
-        self.pending_requests = requests_manager
+        self.pending_requests = pending_requests
 
     def schema(self):
         return {
@@ -73,7 +73,7 @@ class RemoteTool(Tool):
         try:
             result = await asyncio.wait_for(
                 future,
-                timeout=30.0
+                timeout=5.0
             )
 
             return result

@@ -5,9 +5,10 @@ import webrtcvad
 import websockets
 
 from app.agent.base import ExecutionType
+from app.agent.pending_manager import PendingRequests
 from app.vad.vad_detection import detect_speech
 from app.agent.registery import ToolRegistry
-from app.agent.remoteToolRegistry import RemoteTool
+from app.agent.remoteToolRegistryRouter import RemoteTool
 from app.agent.registery import ToolRegistry
 
 
@@ -29,7 +30,7 @@ pc_clients = {}     # { "pc_name": websocket_instance }
 esp_clients = set()  # Set of ESP websocket instances
 clients = set()
 
-async def handle_client(websocket, process_audio, tool_registry: ToolRegistry):
+async def handle_client(websocket, process_audio, tool_registry: ToolRegistry,request_pending:PendingRequests):
     clients.add(websocket)
 
     client_type = "esp"
@@ -42,7 +43,7 @@ async def handle_client(websocket, process_audio, tool_registry: ToolRegistry):
 
                 try:
                     data = json.loads(message)
-                    print(f"[WS] Received JSON: {data}")
+                    # print(f"[WS] Received JSON: {data}")
                 except json.JSONDecodeError:
                     data = None
 
@@ -96,8 +97,7 @@ async def handle_client(websocket, process_audio, tool_registry: ToolRegistry):
                      if client_type == "pc" and client_name:
                          tools = data.get("tools", [])
 
-                         print("Printing tools before registering remote tools:")
-                         tool_registry.print_tools()
+                       
 
                          for tool_data in tools:
                              remote_tool = RemoteTool(
@@ -106,22 +106,22 @@ async def handle_client(websocket, process_audio, tool_registry: ToolRegistry):
                                  parameters=tool_data.get("parameters", {}),
                                  websocket=websocket,
                                  client_name=client_name,
+                                 pending_requests=request_pending
                              )
                              tool_registry.register(remote_tool, ExecutionType.REMOTE)
 
                          print(f"[PC] Tools received from {client_name}: {len(tools)}")
 
-                         # Print updated tool list to verify registration
-                         tool_registry.print_tools()
+                        
                          from app.agent.ToolRouter import ToolRouter
                          print("execution test...")
-                         tool_router = ToolRouter(tool_registry)
-                         await tool_router.execute(
+                         tool_router = ToolRouter(tool_registry,request_pending)
+                         asyncio.create_task(tool_router.execute(
                                  tool_name="browser_open_tab",
                                  arguments={"url": "https://www.youtube.com","tool_call_id":"call_abc123"}
                                  
                                  
-                             ) 
+                             ) ) 
 
                          # Get LLM-ready JSON schemas for model requests
                         #  tools_schema = tool_registry.get_tool_schemas()
@@ -136,16 +136,18 @@ async def handle_client(websocket, process_audio, tool_registry: ToolRegistry):
                             f"[PC] Received execution response for request_id={request_id}: "
                             f"result={result}, error={error}"
                         )
-                        
+                        requestes=request_pending.list()
+                        for req in requestes:
+                            print(f"Pending request: {req}/\n")
 
                         if request_id:
                             if error:
-                                tool_registry.pending_requests.reject(
+                                request_pending.reject(
                                     request_id,
                                     error
                                 )
                             else:
-                                tool_registry.pending_requests.resolve(
+                                request_pending.resolve(
                                     request_id,
                                     result
                                 )
