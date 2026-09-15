@@ -14,5 +14,5 @@ class ToolRouter:
     ):
 
         tool = self.registry.get(tool_name)
-        result = await tool.execute(arguments)
+        result = await tool.execute(tool_name, **arguments)
         return result

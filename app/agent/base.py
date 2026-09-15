@@ -1,12 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import Any
-
+class ExecutionType():
+    LOCAL = "local"
+    REMOTE = "remote"
 
 class Tool(ABC):
     name: str
     description: str
     arguments_model: Any  # This should be a Pydantic model class
-    executor: Any  # This should be a callable that takes a dict and returns a result
+    executor: ExecutionType  # This should be a callable that takes a dict and returns a result
 
     def schema(self):
         return {

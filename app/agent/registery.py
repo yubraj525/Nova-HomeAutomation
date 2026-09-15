@@ -1,4 +1,4 @@
-from .base import Tool
+from .base import ExecutionType, Tool
 
 
 class ToolRegistry:
@@ -6,7 +6,8 @@ class ToolRegistry:
     def __init__(self):
         self._tools: dict[str, Tool] = {}
 
-    def register(self, tool: Tool):
+    def register(self, tool: Tool, executor: ExecutionType=ExecutionType.LOCAL):
+        tool.executor = executor
         self._tools[tool.name] = tool
 
     def get(self, name: str) -> Tool:
@@ -24,6 +25,7 @@ class ToolRegistry:
      for tool in self._tools.values():
          print(f"\nTool: {tool.name}")
          print(f"Description: {tool.description}")
+         print(f"Execution Type: {tool.executor}")
  
          # Case 1: Pydantic model structure
          if getattr(tool, "arguments_model", None):  

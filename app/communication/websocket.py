@@ -4,6 +4,7 @@ import json
 import webrtcvad
 import websockets
 
+from app.agent.base import ExecutionType
 from app.vad.vad_detection import detect_speech
 from app.agent.registery import ToolRegistry
 from app.agent.remoteToolRegistry import RemoteTool
@@ -91,53 +92,40 @@ async def handle_client(websocket, process_audio, tool_registry: ToolRegistry):
                     # RESPONSE TO request_tools
                     # =========================
                     elif msg_type == "response_tools":
+                     if client_type == "pc" and client_name:
+                         tools = data.get("tools", [])
 
-                        if client_type == "pc" and client_name:
+                         print("Printing tools before registering remote tools:")
+                         tool_registry.print_tools()
 
-                            tools = data.get(
-                                "tools",
-                                []
-                            )
-                            
+                         for tool_data in tools:
+                             remote_tool = RemoteTool(
+                                 name=tool_data["name"],
+                                 description=tool_data.get("description", ""),
+                                 parameters=tool_data.get("parameters", {}),
+                                 websocket=websocket,
+                                 client_name=client_name,
+                             )
+                             tool_registry.register(remote_tool, ExecutionType.REMOTE)
 
-                            
-                            # pc_clients[client_name]["tools"] = tools
-                            # remote_tool_registry = RemoteTool()
-                            
-                            # remote_tool_registry.register_tools(
-                            #             tools=tools,
-                            #             websocket=websocket,
-                            #             client_name=client_name,
-                                    # )
-                              
-                            print(f"printing tools before registring remote tools")
-                            tool_registry.print_tools()
-                            
-                            for tool_data in tools:
-                                
-                                
-                                remote_tool = RemoteTool(
-                                    name=tool_data["name"],
-                                    description=tool_data.get("description", ""),
-                                    parameters=tool_data.get("parameters", {}),
-                                    websocket=websocket,
-                                    client_name=client_name,
-                                )
+                         print(f"[PC] Tools received from {client_name}: {len(tools)}")
 
-                                tool_registry.register(remote_tool)
+                         # Print updated tool list to verify registration
+                         tool_registry.print_tools()
+                         from app.agent.ToolRouter import ToolRouter
+                         print("execution test...")
+                         tool_router = ToolRouter(tool_registry)
+                         await tool_router.execute(
+                                 tool_name="browser_open_tab",
+                                 arguments={"url": "https://www.youtube.com"}
+                                 
+                             ) 
 
-                            print(
-                                f"[PC] Tools received from "
-                                f"{client_name}: "
-                                f"{len(tools)}"
-                            )
-                        # tools_schema = tool_registry.get_tool_schemas()
-                        # print(f"[PC] Tools schema: {json.dumps(tools_schema, indent=2)}")
-                        tools_schema = tool_registry.print_tools();
-                        continue
-                    
+                         # Get LLM-ready JSON schemas for model requests
+                        #  tools_schema = tool_registry.get_tool_schemas()
+                        #  print(f"[PC] Clean LLM Tools Schema: {json.dumps(tools_schema, indent=2)}")
 
-
+                         continue
 
                 # =========================
                 # ESP32 TEXT MESSAGES
