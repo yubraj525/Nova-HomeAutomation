@@ -1,3 +1,5 @@
+from app.agent.pending_manager import PendingRequests
+
 from .base import Tool
 import asyncio
 import json
@@ -10,6 +12,7 @@ class RemoteTool(Tool):
         parameters,
         websocket,
         client_name,
+        requests_manager=PendingRequests(),
     ):
         self.name = name
         self.description = description
@@ -17,6 +20,7 @@ class RemoteTool(Tool):
 
         self.websocket = websocket
         self.client_name = client_name
+        self.pending_requests = requests_manager
 
     def schema(self):
         return {
@@ -28,33 +32,55 @@ class RemoteTool(Tool):
             }
         }
 
-    async def execute(self,tool_name, **kwargs) -> str:
-        """Sends execution payload over WebSocket and awaits tool_result."""
-        print(f"Executing remote tool '{self.name}' on client '{tool_name}' with arguments: {kwargs}")
-        # call_id = str(uuid.uuid4())/
-        loop = asyncio.get_running_loop()
+    async def execute(
+        self,
+        tool_name: str,
+        **kwargs
+    ) -> str:
 
-        # 1. Create a Future to block until WebSocket receives the response
-        future = loop.create_future()
-        # self.pending_calls[call_id] = future
+        """Execute a remote tool and await its result."""
+        if 'tool_call_id' in kwargs:
+                        tool_call_id = kwargs.pop('tool_call_id')
 
-        # 2. Build execution payload for PC agent
+        print(
+            f"Executing remote tool '{tool_name}' "
+            f"with tool call ID: {tool_call_id} "
+            f"on client '{self.client_name}' "
+            f"with arguments: {kwargs}"
+        )
+
+        # 1. Create and register pending request
+        request_id, future = self.pending_requests.create(
+            tool_name=tool_name,
+            tool_call_id=tool_call_id,
+            arguments=kwargs,
+            source="remote",
+            client_name=self.client_name,
+        )
+
+        # 2. Build execution payload
         payload = {
             "type": "execute_tool",
-            # "call_id": call_id,
+            "request_id": request_id,
             "tool_name": tool_name,
             "arguments": kwargs,
         }
 
-        # 3. Transmit command over WebSocket
+        # 3. Send request to PC Agent
         await self.websocket.send(json.dumps(payload))
 
-        # 4. Await response or timeout safely
+        # 4. Wait for PC response
         try:
-            result = await asyncio.wait_for(future, timeout=30.0)
+            result = await asyncio.wait_for(
+                future,
+                timeout=30.0
+            )
+
             return result
+
         except asyncio.TimeoutError:
-            return f"Error: Remote execution of '{self.name}' timed out on client '{self.client_name}'."
-        # finally:
-            # Clean up pending call dictionary
-            # self.pending_calls.pop(call_id, None)
+            return (
+                f"Error: Remote execution of "
+                f"'{tool_name}' timed out on "
+                f"client '{self.client_name}'."
+            )

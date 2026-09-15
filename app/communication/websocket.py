@@ -117,7 +117,8 @@ async def handle_client(websocket, process_audio, tool_registry: ToolRegistry):
                          tool_router = ToolRouter(tool_registry)
                          await tool_router.execute(
                                  tool_name="browser_open_tab",
-                                 arguments={"url": "https://www.youtube.com"}
+                                 arguments={"url": "https://www.youtube.com","tool_call_id":"call_abc123"}
+                                 
                                  
                              ) 
 
