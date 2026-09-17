@@ -151,10 +151,10 @@ async def main():
 )
 
     from app.communication.websocket_transport import WebSocketAudioTransport 
-#     transport = WebSocketAudioTransport(
-#     get_WSconnection
-# )
-    transport =LocalAudioTransport()
+    transport = WebSocketAudioTransport(
+    get_WSconnection
+)
+    # transport =LocalAudioTransport()
     from app.pipeline.process_audio import ProcessAudio
     process_audio = ProcessAudio(synthesizer, transport)
    

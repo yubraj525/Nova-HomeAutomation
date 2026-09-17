@@ -30,11 +30,26 @@ pc_clients = {}     # { "pc_name": websocket_instance }
 esp_clients = set()  # Set of ESP websocket instances
 clients = set()
 
-async def handle_client(websocket, process_audio, tool_registry: ToolRegistry,request_pending:PendingRequests):
+async def handle_client(
+    websocket,
+    process_audio,
+    tool_registry: ToolRegistry,
+    request_pending: PendingRequests
+):
     clients.add(websocket)
 
+    # Default connection type
     client_type = "esp"
     client_name = None
+
+    # Initially consider every connection as ESP32
+    esp_clients.add(websocket)
+
+    print(
+        f"[WS] New connection | "
+        f"ESP32: {len(esp_clients)} | "
+        f"PC: {len(pc_clients)}"
+    )
 
     try:
         async for message in websocket:
@@ -43,12 +58,13 @@ async def handle_client(websocket, process_audio, tool_registry: ToolRegistry,re
 
                 try:
                     data = json.loads(message)
-                    # print(f"[WS] Received JSON: {data}")
                 except json.JSONDecodeError:
                     data = None
 
+                # =========================
+                # JSON MESSAGES
+                # =========================
                 if isinstance(data, dict):
-                  
 
                     msg_type = data.get("type")
 
@@ -57,24 +73,35 @@ async def handle_client(websocket, process_audio, tool_registry: ToolRegistry,re
                     # =========================
                     if msg_type == "register":
 
-                        client_type = data.get(
+                        requested_type = data.get(
                             "client_type",
                             "esp"
                         )
 
-                        client_name = data.get(
+                        requested_name = data.get(
                             "client_name"
                         )
 
-                        if client_type == "pc" and client_name:
+                        # Convert ESP connection to PC
+                        if (
+                            requested_type == "pc"
+                            and requested_name
+                        ):
+                            client_type = "pc"
+                            client_name = requested_name
 
+                            # Remove from ESP clients
+                            esp_clients.discard(websocket)
+
+                            # Store as PC client
                             pc_clients[client_name] = {
                                 "websocket": websocket,
                                 "tools": []
                             }
 
                             print(
-                                f"[PC] Connected: {client_name}"
+                                f"[WS] Connection registered as PC: "
+                                f"{client_name}"
                             )
 
                             await websocket.send(
@@ -83,62 +110,70 @@ async def handle_client(websocket, process_audio, tool_registry: ToolRegistry,re
                                 })
                             )
 
+                        else:
+                            # Remain ESP32
+                            client_type = "esp"
+
+                            esp_clients.add(websocket)
+
                             print(
-                                f"[PC] Total connected: "
-                                f"{len(pc_clients)}"
+                                "[WS] Connection registered as ESP32"
                             )
 
                         continue
 
                     # =========================
-                    # RESPONSE TO request_tools
+                    # PC TOOL REGISTRATION
                     # =========================
                     if msg_type == "response_tools":
-                     if client_type == "pc" and client_name:
-                         tools = data.get("tools", [])
 
-                       
+                        if client_type == "pc" and client_name:
 
-                         for tool_data in tools:
-                             remote_tool = RemoteTool(
-                                 name=tool_data["name"],
-                                 description=tool_data.get("description", ""),
-                                 parameters=tool_data.get("parameters", {}),
-                                 websocket=websocket,
-                                 client_name=client_name,
-                                 pending_requests=request_pending
-                             )
-                             tool_registry.register(remote_tool, ExecutionType.REMOTE)
+                            tools = data.get("tools", [])
 
-                         print(f"[PC] Tools received from {client_name}: {len(tools)}")
+                            for tool_data in tools:
+                                remote_tool = RemoteTool(
+                                    name=tool_data["name"],
+                                    description=tool_data.get(
+                                        "description",
+                                        ""
+                                    ),
+                                    parameters=tool_data.get(
+                                        "parameters",
+                                        {}
+                                    ),
+                                    websocket=websocket,
+                                    client_name=client_name,
+                                    pending_requests=request_pending
+                                )
 
-                        
-                         from app.agent.ToolRouter import ToolRouter
-                         print("execution test...")
-                         tool_router = ToolRouter(tool_registry,request_pending)
-                         asyncio.create_task(tool_router.execute(
-                                 tool_name="browser_open_tab",
-                                 arguments={"url": "https://www.youtube.com","tool_call_id":"call_abc123"}
-                                 
-                                 
-                             ) ) 
+                                tool_registry.register(
+                                    remote_tool,
+                                    ExecutionType.REMOTE
+                                )
 
-                         # Get LLM-ready JSON schemas for model requests
-                        #  tools_schema = tool_registry.get_tool_schemas()
-                        #  print(f"[PC] Clean LLM Tools Schema: {json.dumps(tools_schema, indent=2)}")
+                            print(
+                                f"[PC] Tools received from "
+                                f"{client_name}: {len(tools)}"
+                            )
 
-                         continue
+                        continue
+
+                    # =========================
+                    # PC EXECUTION RESPONSE
+                    # =========================
                     if msg_type == "response_execute_tool":
+
                         request_id = data.get("request_id")
                         result = data.get("result")
                         error = data.get("error")
+
                         print(
-                            f"[PC] Received execution response for request_id={request_id}: "
-                            f"result={result}, error={error}"
+                            f"[PC] Execution response | "
+                            f"request_id={request_id} | "
+                            f"result={result} | "
+                            f"error={error}"
                         )
-                        requestes=request_pending.list()
-                        for req in requestes:
-                            print(f"Pending request: {req}/\n")
 
                         if request_id:
                             if error:
@@ -151,21 +186,13 @@ async def handle_client(websocket, process_audio, tool_registry: ToolRegistry,re
                                     request_id,
                                     result
                                 )
+
                         continue
-                    
+
                 # =========================
                 # ESP32 TEXT MESSAGES
                 # =========================
                 if client_type == "esp":
-
-                    if websocket not in esp_clients:
-                        esp_clients.add(websocket)
-
-                        print(
-                            f"[ESP] Connected "
-                            f"(Total ESP32: "
-                            f"{len(esp_clients)})"
-                        )
 
                     if message == "play_test":
                         await stream_audio()
@@ -179,43 +206,44 @@ async def handle_client(websocket, process_audio, tool_registry: ToolRegistry,re
             elif isinstance(message, bytes):
 
                 if client_type == "esp":
-                    # print(f"[ESP] Received audio chunk: {len(message)} bytes")
                     await detect_speech(
                         message,
                         process_audio
                     )
 
     except websockets.exceptions.ConnectionClosed:
-
         print(
-            f"[WS] Disconnected: "
-            f"type={client_type}, "
+            f"[WS] Disconnected | "
+            f"type={client_type} | "
             f"name={client_name}"
         )
 
     finally:
-
         clients.discard(websocket)
 
         if client_type == "pc" and client_name:
+            pc_clients.pop(client_name, None)
 
-            pc_clients.pop(
-                client_name,
-                None
-            )
-
-            print(
-                f"[PC] Removed: {client_name}"
-            )
+            print(f"[PC] Removed PC client: {client_name}")
 
         elif client_type == "esp":
-
             esp_clients.discard(websocket)
 
-            print("[ESP] Removed")
+            print("[ESP] Removed ESP32")
 
+        print(
+            f"[WS] Active connections | "
+            f"Total: {len(clients)} | "
+            f"ESP32: {len(esp_clients)} | "
+            f"PC: {len(pc_clients)}"
+        )
+
+        print(
+            f"[WS] Connected PC clients: "
+            f"{list(pc_clients.keys())}"
+        )
 async def send_websocket_message(message):
-    global ws
+    ws = get_WSconnection()
     if ws is None:
         print("No active websocket connection to send message!")
         return
@@ -247,8 +275,14 @@ async def broadcast(data):
 
 
 def get_WSconnection():
-    print(f"[WS] current connection = {ws}")
-    return ws
+    if not esp_clients:
+        print("[WS] No ESP connection")
+        return None
+
+    websocket = next(iter(esp_clients))
+
+    # print(f"[WS] current connection = {websocket}")
+    return websocket
 
 async def stream_audio(AUDIO_FILE="data/output_audio/response.wav"):
     websocket = get_WSconnection()

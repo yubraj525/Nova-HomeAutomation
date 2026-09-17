@@ -37,6 +37,8 @@ async def speak(
         print("[QUEUE] all chunks consumed")
 
     finally:
+        print("[AUDIO] finishing playback")
+        print(f"[AUDIO] ending audio playback on {transport._get_ws()}")
         await transport.end()
 
         consumer.cancel()
