@@ -32,12 +32,12 @@ class ProcessAudio:
         self._synthesizer = synthesizer
         self._transport = transport
 
-    async def process_audio(self,text):
+    async def process_audio(self):
      
      
      from app.tts.nepanglish_tts import get_synthesizer
      
-    #  text = _transcribe() ## for test il be passing direct from params
+     text = _transcribe() ## for test il be passing direct from params
     #  text = "What is the capital of Nepal?"
      print(f"Transcribed text: {text}")
      if not text or len(text.strip()) < 2:

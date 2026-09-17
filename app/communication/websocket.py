@@ -179,6 +179,7 @@ async def handle_client(websocket, process_audio, tool_registry: ToolRegistry,re
             elif isinstance(message, bytes):
 
                 if client_type == "esp":
+                    # print(f"[ESP] Received audio chunk: {len(message)} bytes")
                     await detect_speech(
                         message,
                         process_audio
