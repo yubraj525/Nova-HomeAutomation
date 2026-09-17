@@ -72,3 +72,77 @@ voice-assistant/
 ├── .env
 ├── requirements.txt
 └── README.md
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+app/
+│
+├── agent/
+│   ├── agent.py
+│   ├── context.py
+│   ├── memory.py
+│   ├── planner.py
+│   └── events.py
+│
+├── llm/
+│   ├── groq.py
+│   ├── streaming.py
+│   └── parser.py
+│
+├── stt/
+│   ├── whisper.py
+│   └── service.py
+│
+├── tts/
+│   ├── nepanglish.py
+│   ├── engine.py
+│   ├── chunker.py
+│   └── fillers.py
+│
+├── audio/
+│   ├── queue.py
+│   ├── chunk.py
+│   └── transport.py
+│
+├── communication/
+│   └── websocket.py
+│
+├── tools/
+│   ├── registry.py
+│   ├── router.py
+│   └── ...
+│
+└── pipeline/
+    └── voice_session.py
+
+
+
+    september 6th updation
+    
