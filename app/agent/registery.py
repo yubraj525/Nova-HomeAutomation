@@ -9,6 +9,7 @@ class ToolRegistry:
     def register(self, tool: Tool, executor: ExecutionType=ExecutionType.LOCAL):
         tool.executor = executor
         self._tools[tool.name] = tool
+        print(f"[TOOL REGISTRY] Registered tool: {tool.name} ")
 
     def get(self, name: str) -> Tool:
         tool = self._tools.get(name)
@@ -55,7 +56,12 @@ class ToolRegistry:
          print("-" * 40)
 
     def get_tool_schemas(self):
+        print("[TOOL REGISTRY] Fetching tool schemas...")
         return [
             tool.schema()
             for tool in self._tools.values()
         ]
+    # def get_tool_schemas(self):
+    #  for tool in self._tools.values():
+    #     print(f"\nTool: {tool.name}")
+    #     print(tool.schema())

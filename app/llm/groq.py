@@ -219,7 +219,7 @@ CASE 5: FAILSAFE
   "target":"none",
   "action":"none",
   "song":"",
-  "response":"अलि स्पष्ट बुझिनँ, फेरि भन्नुहुन्छ?",
+  "response":"अलि स्पष्ट बुझिनँ, फेरि भन्नुहोस्?",
   "convo":"म सुन्दैछु।"
 }
 
@@ -251,7 +251,9 @@ CASE 5: FAILSAFE
 - Professional तर friendly tone
 - छोटो तर उपयोगी response
 - Human-like conversational style
-- धेरै robotic वा formal नबनाउनु """
+- धेरै robotic वा formal नबनाउनु 
+- नियमित रूपमा उपयोगी र स्पष्ट response             
+and there a re more as tools provided you are allow only to perfoem actiona and observer as per tools and there result to intent inaction the command as given tools and schemas"""
 
 # You are Nova — a friendly, energetic, and very talkative Nepali girl assistant.
 
@@ -377,6 +379,7 @@ async def groq_llm_json(user_text: str):
             model="openai/gpt-oss-120b",
             messages=messages,
             temperature=0.5,
+            
             max_completion_tokens=400,  # raised: Devanagari chars are token-heavy
         )
 

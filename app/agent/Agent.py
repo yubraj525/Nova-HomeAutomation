@@ -1,12 +1,17 @@
 import json
+import os
 
+from groq import Groq
+from dotenv import load_dotenv
+load_dotenv()
 
 class Agent:
 
-    def __init__(self, client, registry, router):
-        self.client = client
+    def __init__(self, registry,):
+    # def __init__(self, client, registry, router):
+        self.client = Groq(api_key=os.getenv("GROQ"))
         self.registry = registry
-        self.router = router
+        # self.router = router
 
         self.messages = []
 
@@ -36,6 +41,7 @@ class Agent:
 
             # No tool → final answer
             if not response.tool_calls:
+                print(f"\nFinal Answer in test:\n{response.content}")
                 return response.content
 
             # Execute tools
@@ -43,24 +49,25 @@ class Agent:
 
                 tool_name = tool_call.function.name
 
-                arguments = json.loads(
-                    tool_call.function.arguments
-                )
+                # arguments = json.loads(
+                #     tool_call.function.arguments
+                # )
 
-                result = await self.router.execute(
-                    tool_name,
-                    arguments
-                )
+                # result = await self.router.execute(
+                #     tool_name,
+                #     arguments
+                # )
 
                 print(
                     f"\nTool '{tool_name}' "
-                    f"executed with result: {result}"
+                    f"executed successfully"
                 )
 
                 self.messages.append({
                     "role": "tool",
                     "tool_call_id": tool_call.id,
-                    "content": str(result)
+                    "content": str()
                 })
+                return f"Tool '{tool_name}' executed successfully."
 
         return "Maximum agent iterations reached."

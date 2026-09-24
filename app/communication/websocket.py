@@ -1,6 +1,7 @@
 import asyncio
 import json
 
+
 import webrtcvad
 import websockets
 
@@ -10,6 +11,8 @@ from app.vad.vad_detection import detect_speech
 from app.agent.registery import ToolRegistry
 from app.agent.remoteToolRegistryRouter import RemoteTool
 from app.agent.registery import ToolRegistry
+from app.agent.Agent import Agent
+
 
 
 
@@ -151,6 +154,21 @@ async def handle_client(
                                     remote_tool,
                                     ExecutionType.REMOTE
                                 )
+                            print(json.dumps(tool_registry.get_tool_schemas(), indent=2));
+                            agent= Agent(tool_registry)
+                            while True:
+                                 user_input = input("You: ")
+
+                                 if user_input.lower() == "exit":
+                                     break
+                                 
+                                 print(f"User said: {user_input}")
+                                 response =await agent.run(user_input)
+                                 print(f"Agent response: {response}")
+                                # print(tool_registry.get_tool_schemas());
+                                
+                               
+
 
                             print(
                                 f"[PC] Tools received from "
