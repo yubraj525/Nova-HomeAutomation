@@ -58,6 +58,7 @@ class WebSocketAudioTransport:
 
         print("[WS] audio playback finished")
         print(f"[WS] Stopping audio stream on {websocket}")
+        await asyncio.sleep(1.5)
 
         await websocket.send("audio_end")
         await websocket.send("stop_stream")
