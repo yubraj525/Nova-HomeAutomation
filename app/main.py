@@ -126,7 +126,8 @@ async def main():
             websocket,
             process_audio,
             registery,
-            request_pending
+            request_pending,
+            router
         )
         
     

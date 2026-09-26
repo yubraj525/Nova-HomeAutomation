@@ -35,12 +35,14 @@ class RemoteTool(Tool):
     async def execute(
         self,
         tool_name: str,
+        tool_call_id: str | None = None,
         **kwargs
     ) -> str:
 
         """Execute a remote tool and await its result."""
-        if 'tool_call_id' in kwargs:
-                        tool_call_id = kwargs.pop('tool_call_id')
+        print(f"[REMOTE TOOL] Executing tool: {self.name} with arguments: {kwargs} on client: {self.client_name} tool_call_id: {tool_call_id}")
+        # if 'tool_call_id' in kwargs:
+        #                 tool_call_id =
 
         print(
             f"Executing remote tool '{tool_name}' "

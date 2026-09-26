@@ -22,4 +22,5 @@ class Tool(ABC):
     
     @abstractmethod
     async def execute(self, arguments: dict[str, Any]) -> Any:
+        print(f"[TOOL] Executing tool: {self.name} with arguments: {arguments} at last in port")
         pass

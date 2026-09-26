@@ -23,6 +23,7 @@ class ToolRouter:
      try:
          result = await tool.execute(
              tool_name,
+             tool_call_id=tool_call_id,
              **arguments
          )
 
@@ -32,7 +33,7 @@ class ToolRouter:
 
      except Exception as e:
        
-         new_e = Exception(f"Error executing tool {tool_name}: {str(e)}")
+         new_e = Exception(f"Error executing tool e1 {tool_name}: {str(e)}")
          new_e.__cause__ = e
 
          raise new_e

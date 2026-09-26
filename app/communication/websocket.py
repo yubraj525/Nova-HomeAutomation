@@ -5,6 +5,7 @@ import json
 import webrtcvad
 import websockets
 
+from app.agent.ToolRouter import ToolRouter
 from app.agent.base import ExecutionType
 from app.agent.pending_manager import PendingRequests
 from app.vad.vad_detection import detect_speech
@@ -37,7 +38,8 @@ async def handle_client(
     websocket,
     process_audio,
     tool_registry: ToolRegistry,
-    request_pending: PendingRequests
+    request_pending: PendingRequests,
+    router: ToolRouter
 ):
     clients.add(websocket)
 
@@ -155,7 +157,7 @@ async def handle_client(
                                     ExecutionType.REMOTE
                                 )
                             print(json.dumps(tool_registry.get_tool_schemas(), indent=2));
-                            agent= Agent(tool_registry)
+                            agent= Agent(tool_registry,router)
                             while True:
                                  user_input = input("You: ")
 
