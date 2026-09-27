@@ -1,7 +1,7 @@
 import os
 import subprocess
 import asyncio
-from app.tts.tts_engine import play_audio
+# from app.tts.tts_engine import play_audio
 
 # Paths relative to the project root
 MUSIC_DIR = "assets/music"
@@ -66,7 +66,7 @@ async def download_and_play(query):
         print(f"Exported: {SONG_WAV} (24kHz, 16-bit, Mono)")
 
         # Play locally
-        await play_audio(SONG_WAV)
+        # await play_audio(SONG_WAV)
     except Exception as e:
         print(f"Error during audio conversion/playback: {e}")
 
