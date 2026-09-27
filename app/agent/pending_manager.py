@@ -66,3 +66,15 @@ class PendingRequests:
             }
             for request in self._requests.values()
         ]
+    def get(self, request_id: str):
+         request = self._requests.get(request_id)
+        
+         if request is None:
+             print(f"[PendingRequests] Unknown request: {request_id}")
+             return None
+        
+         return {
+             key: value
+             for key, value in request.items()
+             if key != "future"
+         }

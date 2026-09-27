@@ -56,7 +56,7 @@ class ToolRegistry:
          print("-" * 40)
 
     def get_tool_schemas(self):
-        print("[TOOL REGISTRY] Fetching tool schemas...")
+        # print("[TOOL REGISTRY] Fetching tool schemas...")
         return [
             tool.schema()
             for tool in self._tools.values()

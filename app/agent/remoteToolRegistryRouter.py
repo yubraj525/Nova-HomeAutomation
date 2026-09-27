@@ -1,3 +1,5 @@
+from unittest import result
+
 from app.agent.pending_manager import PendingRequests
 
 from .base import Tool
@@ -40,10 +42,7 @@ class RemoteTool(Tool):
     ) -> str:
 
         """Execute a remote tool and await its result."""
-        print(f"[REMOTE TOOL] Executing tool: {self.name} with arguments: {kwargs} on client: {self.client_name} tool_call_id: {tool_call_id}")
-        # if 'tool_call_id' in kwargs:
-        #                 tool_call_id =
-
+   
         print(
             f"Executing remote tool '{tool_name}' "
             f"with tool call ID: {tool_call_id} "
@@ -74,9 +73,12 @@ class RemoteTool(Tool):
         # 4. Wait for PC response
         try:
             result = await asyncio.wait_for(
-                future,
-                timeout=5.0
-            )
+            future,
+            timeout=5
+)
+
+            # print(f"[REMOTE EXECUTOR] Future resolved!")
+            # print(f"[REMOTE EXECUTOR] Result = {result}")
 
             return result
 

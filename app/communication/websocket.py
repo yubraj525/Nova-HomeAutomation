@@ -61,10 +61,11 @@ async def handle_client(
 
             if isinstance(message, str):
 
-                try:
-                    data = json.loads(message)
-                except json.JSONDecodeError:
-                    data = None
+                # try:
+                data = json.loads(message)
+                #     print(f"[WS] Received data: {data}")
+                # except json.JSONDecodeError:
+                #     data = None
 
                 # =========================
                 # JSON MESSAGES
@@ -156,17 +157,14 @@ async def handle_client(
                                     remote_tool,
                                     ExecutionType.REMOTE
                                 )
-                            print(json.dumps(tool_registry.get_tool_schemas(), indent=2));
+                                # this is a testing line to check if the agent can execute a remote tool on the PC client
+                            # print(json.dumps(tool_registry.get_tool_schemas(), indent=2));
                             agent= Agent(tool_registry,router)
-                            while True:
-                                 user_input = input("You: ")
-
-                                 if user_input.lower() == "exit":
-                                     break
-                                 
-                                 print(f"User said: {user_input}")
-                                 response =await agent.run(user_input)
-                                 print(f"Agent response: {response}")
+                           ## THIS IS A TESTING LINE TO CHECK IF THE AGENT CAN EXECUTE A REMOTE TOOL ON THE PC CLIENT
+                            response = asyncio.create_task(
+                                 agent.run("play olivia man i need")
+                                        )
+                            print(f"Agent response: {response}")
                                 # print(tool_registry.get_tool_schemas());
                                 
                                
@@ -186,7 +184,7 @@ async def handle_client(
 
                         request_id = data.get("request_id")
                         result = data.get("result")
-                        error = data.get("error")
+                        error = data.get("error") or None
 
                         print(
                             f"[PC] Execution response | "
@@ -201,12 +199,23 @@ async def handle_client(
                                     request_id,
                                     error
                                 )
+                                print(
+                                    f"[PC] Execution error for "
+                                    f"request_id={request_id}: {error}"
+                                )
+                                
                             else:
                                 request_pending.resolve(
                                     request_id,
                                     result
                                 )
-
+                                
+                                pending = request_pending.list()
+                                print(f"[PC] Pending requests after resolution: {pending}")
+                                # print(
+                                #     f"[PC] Execution result for "
+                                #     f"request_id={request_id}: {result}"
+                                # )
                         continue
 
                 # =========================

@@ -26,6 +26,8 @@ class ToolRouter:
              tool_call_id=tool_call_id,
              **arguments
          )
+        #  print(f"[ROUTER] Executor returned: {result}")
+         return result
 
        
 
