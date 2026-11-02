@@ -3,13 +3,18 @@ import asyncio
 import uvicorn
 import websockets
 from fastapi import FastAPI
+from app.agent.Agent import Agent
+from app.agent.ToolRouter import ToolRouter
+from app.agent.pending_manager import PendingRequests
+from app.agent.registery import ToolRegistry
+from app.agent.tools.calculator import CalculatorTool
+from app.agent.tools.currenTime import GetTimeTool
 from app.audio.player import download_and_play
 from config.config import PORT_API, PORT_WS
-from app.communication.websocket import handle_client
-
+from app.tts.speak import speak
 # Load model once at startup
-
-
+from app.audio.local_transport import LocalAudioTransport
+from app.communication.websocket_transport import WebSocketAudioTransport
 app = FastAPI()
 
 
@@ -88,30 +93,79 @@ async def test():
 #         # asyncio.create_task(text_to_speech(response['response']))
 
 # local ai reponse 
+def create_tool_registry():
+    print("Creating tool registry...")
+    registry = ToolRegistry()
 
+    registry.register(CalculatorTool())
+    registry.register(GetTimeTool())
+    
+
+    return registry
 
 async def main():
-    # Start WebSocket server
-    print("Nova server starting...")
-    ws_server = websockets.serve(handle_client, "0.0.0.0", PORT_WS)
+    # 1. Initialize shared dependencies
+    registry = create_tool_registry()
+    print("Tool registry created.")
 
-    # Start FastAPI server
-    api_server = uvicorn.Server(uvicorn.Config(app, host="192.168.1.70", port=PORT_API))
+    request_pending = PendingRequests()
 
+    router = ToolRouter(registry, request_pending)
+    print("Tool router created.")
+
+    # 2. Initialize ONE agent instance
+    agent = Agent(registry, router)
+    print("Agent initialized.")
+
+    # 3. Initialize TTS
+    from app.tts.nepanglish_tts import get_synthesizer
+    synthesizer = get_synthesizer()
+
+    # 4. Initialize audio transport
+    transport = LocalAudioTransport()
+
+    # 5. Initialize ProcessAudio and inject dependencies
+    from app.pipeline.process_audio import ProcessAudio
+
+    process_audio = ProcessAudio(
+        synthesizer,
+        transport,
+        agent
+    )
+
+    # 6. WebSocket handler
+    from app.communication.websocket import handle_client
+
+    async def ws_handler(websocket):
+        await handle_client(
+            websocket,
+            process_audio,
+            registry,
+            request_pending,
+            router
+        )
+
+    # 7. Start servers
+    ws_server = websockets.serve(
+        ws_handler,
+        "0.0.0.0",
+        PORT_WS
+    )
+
+    api_server = uvicorn.Server(
+        uvicorn.Config(
+            app,
+            host="192.168.1.83",
+            port=PORT_API
+        )
+    )
 
     print(f"WebSocket running on port {PORT_WS}")
     print(f"API running on port {PORT_API}")
-    # await download_and_play("never gonna give you up")
-
 
     async with ws_server:
         await api_server.serve()
 
 
-
-# asyncio.run(play_audio())
-
-asyncio.run(main())
-
-
-#  ollama run phi4-mini:latest  "do you know about nepal"
+if __name__ == "__main__":
+    asyncio.run(main())

@@ -9,8 +9,8 @@ from kokoro_onnx import Kokoro
 # =========================================================
 
 kokoro = Kokoro(
-    "models/kokoro-v1.0.int8.onnx",
-    "models/voices-v1.0.bin"
+    "C:/Users/yubra/OneDrive/Documents/Development/Voice-assitance-py/models/kokoro-v1.0.int8.onnx",
+    "C:/Users/yubra/OneDrive/Documents/Development/Voice-assitance-py/models/voices-v1.0.bin"
 )
 
 # =========================================================
