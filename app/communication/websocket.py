@@ -159,12 +159,12 @@ async def handle_client(
                                 )
                                 # this is a testing line to check if the agent can execute a remote tool on the PC client
                             # print(json.dumps(tool_registry.get_tool_schemas(), indent=2));
-                            agent= Agent(tool_registry,router)
-                           ## THIS IS A TESTING LINE TO CHECK IF THE AGENT CAN EXECUTE A REMOTE TOOL ON THE PC CLIENT
-                            response = asyncio.create_task(
-                                 agent.run("play olivia man i need")
-                                        )
-                            print(f"Agent response: {response}")
+                        #     agent= Agent(tool_registry,router)
+                        #    ## THIS IS A TESTING LINE TO CHECK IF THE AGENT CAN EXECUTE A REMOTE TOOL ON THE PC CLIENT
+                        #     response = asyncio.create_task(
+                        #          agent.run("play olivia man i need")
+                        #                 )
+                        #     print(f"Agent response: {response}")
                                 # print(tool_registry.get_tool_schemas());
                                 
                                

@@ -1,3 +1,6 @@
+
+# model="llama-3.3-70b-versatile"  recommended for groq toool use 
+
 import json
 import os
 
@@ -35,12 +38,35 @@ Rules:
    10. on last where all task executred then reutn a son format as success and failure with content as " successfuly play enjoyded and further
  11. lastly for a one intent task dont repetedly try if the context is same and you are retryng insure after 3rd try it is failure instead no retry and return a failure message with content as " failed to play the video please check your internet connection or the video is not available in your region"
 Tool execution follows this pattern:
+12 you hav been acces vis tool for every aspecta  cimputer can do from opeing a application adn browser or site interaction and start if possible go withthat approach
+
+
+
+
 
 user request
 → tool call
 → tool result
 → next tool call if required
 → final response
+
+
+- You must process inputs provided in English, Nepali (Devanagari), or Romanized Nepali.
+- ALL textual response fields IN DEVNAGARI NEPALI SCRIPT.
+- DO NOT output any English letters inside the response values. Convert all technical terms, names, and English words into their Devanagari phonetics so that the Nepali Text-to-Speech (TTS) engine can pronounce them correctly.
+  Examples:
+  - Playwright -> प्लेराइट
+  - Next.js -> नेक्स्ट जेएस
+  - Python -> पाइथन
+  - GitHub -> गिथब
+  - Docker -> डकर
+  - API -> एपीआई
+  - UI/UX -> युआई/युएक्स
+
+- NO markdown code block wrappers (like ```json ... ```).
+- NO text, explanations, or quotes outside the JSON structure.
+- Maintain a warm, friendly, professional, and natural human-like conversational tone.
+- no more than a tw0 line repose for every tyoe inquries proceed witha  reponse of max 20 -40 words
 """
 
         self.messages = [
@@ -70,8 +96,10 @@ user request
             print(f"[MODEL] Tool calls: {response.tool_calls}")
 
             if not response.tool_calls:
+                print("[AGENT] No tool calls returned by the model.")
 
                 if response.content:
+                    print("[AGENT] Returning model content as final response.")
                     return response.content
 
                 print("[AGENT] Model returned no content and no tool call.")
