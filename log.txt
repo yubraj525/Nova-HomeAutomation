@@ -1,0 +1,7 @@
+NOVA M1 — Tool contract standardization
+- Review: Agent → Router → Registry → Tool; remote calls use PendingRequests and WebSocket replies.
+- Old: locals used execute(arguments); remote tool bypassed that shape with expanded kwargs.
+- New: router validates name/schema/arguments, then calls execute(arguments, context) for local and remote tools.
+- Failures are typed; remote timeout/disconnect clears pending work and disconnect removes that client's tools.
+- Tests cover registration, calculator/time, invalid/unknown tools, exceptions, remote reply, timeout, and disconnect.
+- No TTS/STT/audio/VAD/session-history changes. Added jsonschema for standards-based remote-schema checks.

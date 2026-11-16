@@ -6,14 +6,11 @@ import webrtcvad
 import websockets
 
 from app.agent.ToolRouter import ToolRouter
-from app.agent.base import ExecutionType
 from app.agent.pending_manager import PendingRequests
 from app.vad.vad_detection import detect_speech
 from app.agent.registery import ToolRegistry
 from app.agent.remoteToolRegistryRouter import RemoteTool
-from app.agent.registery import ToolRegistry
-from app.agent.Agent import Agent
-
+from app.agent.base import ExecutionType, ToolError
 
 
 
@@ -93,6 +90,15 @@ async def handle_client(
                             requested_type == "pc"
                             and requested_name
                         ):
+                            existing = pc_clients.get(requested_name)
+                            if existing and existing["websocket"] is not websocket:
+                                await websocket.send(json.dumps({
+                                    "type": "registration_error",
+                                    "error": "client_name_already_registered",
+                                }))
+                                await websocket.close(code=1008, reason="client name already registered")
+                                return
+
                             client_type = "pc"
                             client_name = requested_name
 
@@ -136,27 +142,25 @@ async def handle_client(
                         if client_type == "pc" and client_name:
 
                             tools = data.get("tools", [])
+                            if not isinstance(tools, list):
+                                print(f"[PC] Rejected malformed tool list from {client_name}")
+                                continue
 
                             for tool_data in tools:
-                                remote_tool = RemoteTool(
-                                    name=tool_data["name"],
-                                    description=tool_data.get(
-                                        "description",
-                                        ""
-                                    ),
-                                    parameters=tool_data.get(
-                                        "parameters",
-                                        {}
-                                    ),
-                                    websocket=websocket,
-                                    client_name=client_name,
-                                    pending_requests=request_pending
-                                )
-
-                                tool_registry.register(
-                                    remote_tool,
-                                    ExecutionType.REMOTE
-                                )
+                                try:
+                                    if not isinstance(tool_data, dict):
+                                        raise ValueError("tool entry must be an object")
+                                    remote_tool = RemoteTool(
+                                        name=tool_data.get("name"),
+                                        description=tool_data.get("description", ""),
+                                        parameters=tool_data.get("parameters"),
+                                        websocket=websocket,
+                                        client_name=client_name,
+                                        pending_requests=request_pending
+                                    )
+                                    tool_registry.register(remote_tool, ExecutionType.REMOTE)
+                                except (ToolError, TypeError, ValueError) as error:
+                                    print(f"[PC] Rejected remote tool from {client_name}: {error}")
                                 # this is a testing line to check if the agent can execute a remote tool on the PC client
                             # print(json.dumps(tool_registry.get_tool_schemas(), indent=2));
                         #     agent= Agent(tool_registry,router)
@@ -194,6 +198,17 @@ async def handle_client(
                         )
 
                         if request_id:
+                            pending_request = request_pending.get(request_id)
+                            if (
+                                pending_request is None
+                                or pending_request["client_name"] != client_name
+                            ):
+                                print(
+                                    f"[PC] Ignored unowned or unknown request response: "
+                                    f"{request_id}"
+                                )
+                                continue
+
                             if error:
                                 request_pending.reject(
                                     request_id,
@@ -251,9 +266,19 @@ async def handle_client(
         clients.discard(websocket)
 
         if client_type == "pc" and client_name:
-            pc_clients.pop(client_name, None)
+            request_pending.reject_client(
+                client_name,
+                f"Remote client {client_name!r} disconnected.",
+            )
+            removed_tools = tool_registry.unregister_remote_client(
+                client_name,
+                websocket=websocket,
+            )
+            current_client = pc_clients.get(client_name)
+            if current_client and current_client["websocket"] is websocket:
+                pc_clients.pop(client_name, None)
 
-            print(f"[PC] Removed PC client: {client_name}")
+            print(f"[PC] Removed PC client: {client_name}; tools={removed_tools}")
 
         elif client_type == "esp":
             esp_clients.discard(websocket)

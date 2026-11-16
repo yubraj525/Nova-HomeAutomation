@@ -1,7 +1,7 @@
 import platform
 
 from pydantic import BaseModel
-from app.agent.base import Tool
+from app.agent.base import Tool, ToolExecutionContext
 
 class SystemInfoArgs(BaseModel):
    name: str
@@ -14,7 +14,7 @@ class SystemInfoTool(Tool):
     arguments_model = SystemInfoArgs
     executor = None
 
-    async def execute(self, arguments):
+    async def execute(self, arguments, context: ToolExecutionContext | None = None):
         return {
             "os": platform.system(),
             "release": platform.release(),

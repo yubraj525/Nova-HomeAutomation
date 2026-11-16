@@ -1,90 +1,93 @@
-from unittest import result
+from __future__ import annotations
 
-from app.agent.pending_manager import PendingRequests
-
-from .base import Tool
 import asyncio
 import json
+from typing import Any
+
+from app.agent.base import (
+    RemoteClientDisconnectedError,
+    RemoteToolTimeoutError,
+    ToolExecutionContext,
+    ToolExecutionError,
+)
+from app.agent.pending_manager import PendingRequests
+from .base import Tool
+
+
 class RemoteTool(Tool):
+    """Remote implementation using the same validated Tool contract as local tools."""
 
     def __init__(
         self,
-        name,
-        description,
-        parameters,
+        name: str,
+        description: str,
+        parameters: dict[str, Any],
         websocket,
-        client_name,
-        pending_requests: PendingRequests
+        client_name: str,
+        pending_requests: PendingRequests,
+        timeout: float = 5.0,
     ):
         self.name = name
         self.description = description
         self.parameters = parameters
-
         self.websocket = websocket
         self.client_name = client_name
         self.pending_requests = pending_requests
-
-    def schema(self):
-        return {
-            "type": "function",
-            "function": {
-                "name": self.name,
-                "description": self.description,
-                "parameters": self.parameters,
-            }
-        }
+        self.timeout = timeout
 
     async def execute(
         self,
-        tool_name: str,
-        tool_call_id: str | None = None,
-        **kwargs
-    ) -> str:
-
-        """Execute a remote tool and await its result."""
-   
-        print(
-            f"Executing remote tool '{tool_name}' "
-            f"with tool call ID: {tool_call_id} "
-            f"on client '{self.client_name}' "
-            f"with arguments: {kwargs}"
-        )
-
-        # 1. Create and register pending request
+        arguments: dict[str, Any],
+        context: ToolExecutionContext | None = None,
+    ) -> Any:
+        context = context or ToolExecutionContext()
         request_id, future = self.pending_requests.create(
-            tool_name=tool_name,
-            tool_call_id=tool_call_id,
-            arguments=kwargs,
+            tool_name=self.name,
+            tool_call_id=context.tool_call_id,
+            arguments=arguments,
             source="remote",
             client_name=self.client_name,
         )
-
-        # 2. Build execution payload
         payload = {
             "type": "execute_tool",
             "request_id": request_id,
-            "tool_name": tool_name,
-            "arguments": kwargs,
+            "tool_name": self.name,
+            "arguments": arguments,
         }
 
-        # 3. Send request to PC Agent
-        await self.websocket.send(json.dumps(payload))
+        async def send_and_wait():
+            await self.websocket.send(json.dumps(payload))
+            return await future
 
-        # 4. Wait for PC response
         try:
-            result = await asyncio.wait_for(
-            future,
-            timeout=5
-)
-
-            # print(f"[REMOTE EXECUTOR] Future resolved!")
-            # print(f"[REMOTE EXECUTOR] Result = {result}")
-
-            return result
-
-        except asyncio.TimeoutError:
-            return (
-                f"Error: Remote execution of "
-                f"'{tool_name}' timed out on "
-                f"client '{self.client_name}'."
-            )
+            return await asyncio.wait_for(send_and_wait(), timeout=self.timeout)
+        except asyncio.TimeoutError as exc:
+            self.pending_requests.discard(request_id)
+            raise RemoteToolTimeoutError(
+                f"Remote tool {self.name!r} on client {self.client_name!r} timed out."
+            ) from exc
+        except asyncio.CancelledError:
+            self.pending_requests.discard(request_id)
+            raise
+        except (ConnectionError, OSError) as exc:
+            self.pending_requests.discard(request_id)
+            raise RemoteClientDisconnectedError(
+                f"Remote client {self.client_name!r} disconnected during {self.name!r}."
+            ) from exc
+        except RuntimeError as exc:
+            self.pending_requests.discard(request_id)
+            message = str(exc).lower()
+            if "disconnect" in message or "closed" in message:
+                raise RemoteClientDisconnectedError(
+                    f"Remote client {self.client_name!r} disconnected during {self.name!r}."
+                ) from exc
+            raise ToolExecutionError(f"Remote tool {self.name!r} failed: {exc}") from exc
+        except Exception as exc:
+            self.pending_requests.discard(request_id)
+            # websockets raises its own ConnectionClosed exception; avoid binding this
+            # tool contract to a specific websocket implementation by inspecting it.
+            if "connectionclosed" in type(exc).__name__.lower():
+                raise RemoteClientDisconnectedError(
+                    f"Remote client {self.client_name!r} disconnected during {self.name!r}."
+                ) from exc
+            raise ToolExecutionError(f"Remote tool {self.name!r} failed: {exc}") from exc

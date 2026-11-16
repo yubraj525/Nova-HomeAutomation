@@ -1,9 +1,11 @@
-from app.agent.base import Tool
+from app.agent.base import Tool, ToolExecutionContext
 from pydantic import BaseModel
+from typing import Literal
+
 class CalculatorArgs(BaseModel):
     a: float
     b: float
-    operation: str
+    operation: Literal["add", "subtract", "multiply", "divide"]
 
 class CalculatorTool(Tool):
     name = "calculator"
@@ -11,7 +13,7 @@ class CalculatorTool(Tool):
     arguments_model = CalculatorArgs
     executor = None
 
-    async def execute(self, arguments):
+    async def execute(self, arguments, context: ToolExecutionContext | None = None):
         a = arguments["a"]
         b = arguments["b"]
 

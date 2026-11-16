@@ -1,5 +1,5 @@
 from datetime import datetime
-from app.agent.base import Tool
+from app.agent.base import Tool, ToolExecutionContext
 from pydantic import BaseModel
 
 class GetTimeArgs(BaseModel):
@@ -11,5 +11,5 @@ class GetTimeTool(Tool):
     arguments_model = GetTimeArgs
     executor = None
 
-    async def execute(self, arguments):
+    async def execute(self, arguments, context: ToolExecutionContext | None = None):
         return datetime.now().isoformat()
