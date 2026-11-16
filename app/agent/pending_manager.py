@@ -19,6 +19,9 @@ class PendingRequests:
         arguments: dict,
         source: str = "local",
         client_name: str | None = None,
+        session_id: str | None = None,
+        connection_id: str | None = None,
+        task_id: str | None = None,
     ):
         request_id = str(uuid.uuid4())
         future = asyncio.get_running_loop().create_future()
@@ -29,6 +32,9 @@ class PendingRequests:
             "arguments": arguments,
             "source": source,
             "client_name": client_name,
+            "session_id": session_id,
+            "connection_id": connection_id,
+            "task_id": task_id,
             "status": "pending",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "future": future,
@@ -62,6 +68,66 @@ class PendingRequests:
         ]
         for request_id in request_ids:
             self.reject(request_id, error)
+        return request_ids
+
+    def reject_session(self, session_id: str, error: str) -> list[str]:
+        """Reject and remove outstanding requests owned by one session."""
+        request_ids = [
+            request_id
+            for request_id, request in self._requests.items()
+            if request["session_id"] == session_id
+        ]
+        for request_id in request_ids:
+            self.reject(request_id, error)
+        return request_ids
+
+    def complete_owned(
+        self,
+        request_id: str,
+        connection_id: str,
+        *,
+        result: Any = None,
+        error: str | Exception | None = None,
+    ) -> bool:
+        """Atomically complete a remote request only for its originating connection."""
+        request = self._requests.get(request_id)
+        if (
+            request is None
+            or request["source"] != "remote"
+            or request["connection_id"] != connection_id
+        ):
+            return False
+        # Pop and complete synchronously, so another response or disconnect cannot
+        # also consume this request on the event loop.
+        self._requests.pop(request_id)
+        future = request["future"]
+        if not future.done():
+            if error is not None:
+                future.set_exception(error if isinstance(error, Exception) else RuntimeError(error))
+            else:
+                future.set_result(result)
+        return True
+
+    def reject_connection(self, connection_id: str, error: str) -> list[str]:
+        """Reject outstanding calls from exactly one remote WebSocket connection."""
+        request_ids = [
+            request_id
+            for request_id, request in self._requests.items()
+            if request["source"] == "remote" and request["connection_id"] == connection_id
+        ]
+        for request_id in request_ids:
+            self.reject(request_id, error)
+        return request_ids
+
+    def cancel_session(self, session_id: str) -> list[str]:
+        """Cancel and remove any remaining work after session tasks are stopped."""
+        request_ids = [
+            request_id
+            for request_id, request in self._requests.items()
+            if request["session_id"] == session_id
+        ]
+        for request_id in request_ids:
+            self.discard(request_id)
         return request_ids
 
     def discard(self, request_id: str) -> bool:

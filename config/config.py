@@ -6,6 +6,7 @@ load_dotenv()
 
 PORT_API = 3000
 PORT_WS = 8080
+AUDIO_TRANSPORT = os.getenv("NOVA_AUDIO_TRANSPORT", "websocket").strip().lower()
 SAMPLE_RATE = 16000
 CHANNELS = 1
 SAMPLE_WIDTH = 2

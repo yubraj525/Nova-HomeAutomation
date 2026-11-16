@@ -5,3 +5,6 @@ NOVA M1 — Tool contract standardization
 - Failures are typed; remote timeout/disconnect clears pending work and disconnect removes that client's tools.
 - Tests cover registration, calculator/time, invalid/unknown tools, exceptions, remote reply, timeout, and disconnect.
 - No TTS/STT/audio/VAD/session-history changes. Added jsonschema for standards-based remote-schema checks.
+- M2: server-generated per-connection sessions now own Agent history, VAD buffers, recordings, and processing tasks.
+- Shared STT/playback resources are locked; pending remote calls carry session ownership and are cancelled on teardown.
+- History limit: NOVA_AGENT_HISTORY_LIMIT (default 20 turns). Session cleanup is idempotent and removes owned recordings.

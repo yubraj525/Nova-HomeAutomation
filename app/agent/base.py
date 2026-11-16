@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
@@ -51,6 +51,11 @@ class ToolExecutionContext:
     """Per-call metadata shared by every tool implementation."""
 
     tool_call_id: str | None = None
+    session_id: str | None = None
+    task_id: str | None = None
+    status_callback: Callable[[str], Awaitable[None]] | None = None
+    register_side_effect: Callable[[str, Callable[[], Awaitable[None]]], None] | None = None
+    request_user_input: Callable[[str], Awaitable[str]] | None = None
 
 
 _TOOL_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]{0,63}$")

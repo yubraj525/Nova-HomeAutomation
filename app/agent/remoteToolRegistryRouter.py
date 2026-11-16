@@ -26,12 +26,14 @@ class RemoteTool(Tool):
         client_name: str,
         pending_requests: PendingRequests,
         timeout: float = 5.0,
+        connection_id: str | None = None,
     ):
         self.name = name
         self.description = description
         self.parameters = parameters
         self.websocket = websocket
         self.client_name = client_name
+        self.connection_id = connection_id
         self.pending_requests = pending_requests
         self.timeout = timeout
 
@@ -47,6 +49,9 @@ class RemoteTool(Tool):
             arguments=arguments,
             source="remote",
             client_name=self.client_name,
+            session_id=context.session_id,
+            connection_id=self.connection_id,
+            task_id=context.task_id,
         )
         payload = {
             "type": "execute_tool",

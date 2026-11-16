@@ -1,91 +1,85 @@
-import time
-import queue
+"""Kokoro English synthesis, exposed as chunks for NOVA's shared playback."""
+
+from __future__ import annotations
+
 import threading
-import sounddevice as sd
-from kokoro_onnx import Kokoro
+from pathlib import Path
+import re
 
-# =========================================================
-# MODEL INIT (ONCE ONLY)
-# =========================================================
-
-kokoro = Kokoro(
-    "C:/Users/yubra/OneDrive/Documents/Development/Voice-assitance-py/models/kokoro-v1.0.int8.onnx",
-    "C:/Users/yubra/OneDrive/Documents/Development/Voice-assitance-py/models/voices-v1.0.bin"
-)
-
-# =========================================================
-# CONFIG
-# =========================================================
 
 VOICE = "af_sky"
 SPEED = 1.1
 LANG = "en-us"
+MAX_CHUNK_CHARS = 160
 
-audio_queue = queue.Queue()
 
-# =========================================================
-# CHUNK TEXT
-# =========================================================
-
-def chunk_text(text):
-    separators = [".", "?", "!", ","]
-
-    chunks = []
-    current = ""
-
-    for c in text:
-        current += c
-        if c in separators:
-            if current.strip():
-                chunks.append(current.strip())
-            current = ""
-
-    if current.strip():
-        chunks.append(current.strip())
-
+def chunk_text(text: str) -> list[str]:
+    """Split at sentence boundaries, then cap long pieces for quicker audio."""
+    chunks: list[str] = []
+    sentences = re.split(r"(?<=[.!?])\s+|\n+", text)
+    for sentence in sentences:
+        remaining = sentence.strip()
+        while len(remaining) > MAX_CHUNK_CHARS:
+            # Prefer a word boundary. If a single token is unusually long,
+            # cut at the limit so one token cannot hold up the entire reply.
+            boundary = remaining.rfind(" ", 0, MAX_CHUNK_CHARS + 1)
+            if boundary <= 0:
+                boundary = MAX_CHUNK_CHARS
+            piece = remaining[:boundary].strip()
+            if piece:
+                chunks.append(piece)
+            remaining = remaining[boundary:].strip()
+        if remaining:
+            chunks.append(remaining)
     return chunks
 
-# =========================================================
-# AUDIO PLAYER THREAD (NON-BLOCKING)
-# =========================================================
 
-def audio_player():
-    while True:
-        item = audio_queue.get()
-        if item is None:
-            break
+class KokoroEnglishTTS:
+    """Kokoro wrapper preserving the project's existing voice configuration."""
 
-        samples, sr = item
-        sd.play(samples, sr)
+    def __init__(self, kokoro=None):
+        if kokoro is None:
+            from kokoro_onnx import Kokoro
+
+            root = Path(__file__).resolve().parents[2]
+            kokoro = Kokoro(
+                str(root / "models" / "kokoro-v1.0.int8.onnx"),
+                str(root / "models" / "voices-v1.0.bin"),
+            )
+        self.kokoro = kokoro
+        self.sample_rate = 24000
+        self._lock = threading.Lock()
+
+    def synthesize_stream(self, text: str):
+        # Kokoro's create() returns a complete waveform for each input chunk.
+        # Yield each punctuation chunk immediately to NOVA's shared playback.
+        for part in chunk_text(text):
+            with self._lock:
+                samples, sample_rate = self.kokoro.create(
+                    part, voice=VOICE, speed=SPEED, lang=LANG
+                )
+            self.sample_rate = sample_rate
+            yield samples
+
+
+_synthesizer: KokoroEnglishTTS | None = None
+_synthesizer_lock = threading.Lock()
+
+
+def get_synthesizer() -> KokoroEnglishTTS:
+    global _synthesizer
+    with _synthesizer_lock:
+        if _synthesizer is None:
+            _synthesizer = KokoroEnglishTTS()
+        return _synthesizer
+
+
+# Retain the original script-facing entry point, without creating a second
+# audio queue or player thread. App playback is owned by SpeakerManager.
+def stream_tts(text: str) -> None:
+    synthesizer = get_synthesizer()
+    for samples in synthesizer.synthesize_stream(text):
+        import sounddevice as sd
+
+        sd.play(samples, synthesizer.sample_rate)
         sd.wait()
-
-threading.Thread(target=audio_player, daemon=True).start()
-
-# =========================================================
-# STREAMING TTS ENGINE
-# =========================================================
-
-def stream_tts(text):
-    chunks = chunk_text(text)
-
-    print("Chunks:", chunks)
-
-    start_total = time.time()
-
-    for i, chunk in enumerate(chunks):
-        print(f"\nChunk {i+1}: {chunk}")
-
-        start = time.time()
-
-        samples, sr = kokoro.create(
-            chunk,              # ✅ FIXED (use chunk not full text)
-            voice=VOICE,
-            speed=SPEED,
-            lang=LANG
-        )
-
-        print("Generated in:", round(time.time() - start, 3), "s")
-
-        audio_queue.put((samples, sr))
-
-    print("\nTOTAL TIME:", round(time.time() - start_total, 2), "s")

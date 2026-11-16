@@ -307,7 +307,9 @@ The current architecture is:
               │ Computer 🔊     │
               └─────────────────┘
 
-Later, the transport can become a WebSocket transport:
+The runtime selects the WebSocket transport by default for ESP32 playback. Set
+`NOVA_AUDIO_TRANSPORT=local` to play through the host computer instead. Both
+implementations remain available behind the same transport interface.
 
 TTS
  ↓
@@ -634,13 +636,13 @@ LocalAudioTransport
  ↓
 Computer Speaker
 
-The local transport is currently being used to play the generated PCM audio on the computer.
+The local transport remains available to play generated PCM audio on the computer.
 
 This lets us verify the audio architecture independently from the network.
 
 11. WebSocket Transport
 
-The eventual transport will be:
+The ESP32 transport sends the generated PCM audio over the active device WebSocket:
 
 AudioChunk
     ↓

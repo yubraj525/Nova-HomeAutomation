@@ -9,6 +9,7 @@ class WebSocketAudioTransport:
 
     def __init__(self, get_websocket):
         self.get_websocket = get_websocket
+        self._active_websocket = None
 
     def _get_ws(self):
         websocket = self.get_websocket()
@@ -20,6 +21,7 @@ class WebSocketAudioTransport:
 
     async def start(self):
         websocket = self._get_ws()
+        self._active_websocket = websocket
         print(f"[WS] Starting audio playback on {websocket}")
 
         print("[WS] audio playback started")
@@ -27,7 +29,7 @@ class WebSocketAudioTransport:
         await websocket.send("audio_start")
 
     async def send(self, chunk):
-        websocket = self._get_ws()
+        websocket = self._active_websocket or self._get_ws()
 
         data = chunk.data
 
@@ -52,13 +54,7 @@ class WebSocketAudioTransport:
         )
 
     async def end(self):
-        websocket = self._get_ws()
-        print(f"[WS] Starting audio playback on {websocket}")
-        await asyncio.sleep(1)
-
-        print("[WS] audio playback finished")
-        print(f"[WS] Stopping audio stream on {websocket}")
-        await asyncio.sleep(1.5)
-
+        websocket = self._active_websocket or self._get_ws()
         await websocket.send("audio_end")
-        await websocket.send("stop_stream")
+        self._active_websocket = None
+        print(f"[WS] audio playback finished on {websocket}")

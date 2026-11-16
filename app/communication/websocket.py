@@ -1,8 +1,8 @@
 import asyncio
 import json
+import uuid
 
 
-import webrtcvad
 import websockets
 
 from app.agent.ToolRouter import ToolRouter
@@ -11,33 +11,44 @@ from app.vad.vad_detection import detect_speech
 from app.agent.registery import ToolRegistry
 from app.agent.remoteToolRegistryRouter import RemoteTool
 from app.agent.base import ExecutionType, ToolError
+from app.session import SessionManager
 
 
 
 CHUNK_SIZE = 512  # Larger chunks are more efficient for Wi-Fi
 AUDIO_FILE = "data/output_audio/response.wav"  # For testing streaming to ESP32
 ws = None
-RATE = 24000
-FRAME_MS = 20
-FRAME_SIZE = int(RATE * FRAME_MS / 1000)
-
-vad = webrtcvad.Vad(3)
-
-VOLUME_THRESHOLD = 600
-SPEECH_CONFIRM_FRAMES = 5
-SILENCE_LIMIT = int(2000 / FRAME_MS)
 
 pc_clients = {}     # { "pc_name": websocket_instance }
 esp_clients = set()  # Set of ESP websocket instances
 clients = set()
 
+
+def _complete_remote_response(request_pending, connection_id, client_name, request_id, result, error):
+    """Check both registered name and immutable connection ownership atomically."""
+    pending_request = request_pending.get(request_id)
+    if (
+        pending_request is None
+        or pending_request["client_name"] != client_name
+        or pending_request["connection_id"] != connection_id
+    ):
+        return False
+    return request_pending.complete_owned(
+        request_id,
+        connection_id,
+        result=result,
+        error=error,
+    )
+
 async def handle_client(
     websocket,
-    process_audio,
+    session_manager: SessionManager,
     tool_registry: ToolRegistry,
     request_pending: PendingRequests,
     router: ToolRouter
 ):
+    session = session_manager.create(websocket)
+    connection_id = uuid.uuid4().hex
     clients.add(websocket)
 
     # Default connection type
@@ -102,13 +113,17 @@ async def handle_client(
                             client_type = "pc"
                             client_name = requested_name
 
+                            await session_manager.close(session)
+                            session = None
+
                             # Remove from ESP clients
                             esp_clients.discard(websocket)
 
                             # Store as PC client
                             pc_clients[client_name] = {
                                 "websocket": websocket,
-                                "tools": []
+                                "tools": [],
+                                "connection_id": connection_id,
                             }
 
                             print(
@@ -156,7 +171,8 @@ async def handle_client(
                                         parameters=tool_data.get("parameters"),
                                         websocket=websocket,
                                         client_name=client_name,
-                                        pending_requests=request_pending
+                                        pending_requests=request_pending,
+                                        connection_id=connection_id,
                                     )
                                     tool_registry.register(remote_tool, ExecutionType.REMOTE)
                                 except (ToolError, TypeError, ValueError) as error:
@@ -198,10 +214,13 @@ async def handle_client(
                         )
 
                         if request_id:
-                            pending_request = request_pending.get(request_id)
-                            if (
-                                pending_request is None
-                                or pending_request["client_name"] != client_name
+                            if not _complete_remote_response(
+                                request_pending,
+                                connection_id,
+                                client_name,
+                                request_id,
+                                result,
+                                error,
                             ):
                                 print(
                                     f"[PC] Ignored unowned or unknown request response: "
@@ -210,21 +229,12 @@ async def handle_client(
                                 continue
 
                             if error:
-                                request_pending.reject(
-                                    request_id,
-                                    error
-                                )
                                 print(
                                     f"[PC] Execution error for "
                                     f"request_id={request_id}: {error}"
                                 )
                                 
                             else:
-                                request_pending.resolve(
-                                    request_id,
-                                    result
-                                )
-                                
                                 pending = request_pending.list()
                                 print(f"[PC] Pending requests after resolution: {pending}")
                                 # print(
@@ -239,7 +249,7 @@ async def handle_client(
                 if client_type == "esp":
 
                     if message == "play_test":
-                        await stream_audio()
+                        await stream_audio(websocket=websocket)
 
                     elif message == "Hello from ESP":
                         print("[ESP] Received greeting")
@@ -252,7 +262,7 @@ async def handle_client(
                 if client_type == "esp":
                     await detect_speech(
                         message,
-                        process_audio
+                        session,
                     )
 
     except websockets.exceptions.ConnectionClosed:
@@ -265,9 +275,12 @@ async def handle_client(
     finally:
         clients.discard(websocket)
 
+        if session is not None:
+            await session_manager.close(session)
+
         if client_type == "pc" and client_name:
-            request_pending.reject_client(
-                client_name,
+            request_pending.reject_connection(
+                connection_id,
                 f"Remote client {client_name!r} disconnected.",
             )
             removed_tools = tool_registry.unregister_remote_client(
@@ -338,8 +351,10 @@ def get_WSconnection():
     # print(f"[WS] current connection = {websocket}")
     return websocket
 
-async def stream_audio(AUDIO_FILE="data/output_audio/response.wav"):
-    websocket = get_WSconnection()
+async def stream_audio(AUDIO_FILE="data/output_audio/response.wav", websocket=None):
+    websocket = websocket or get_WSconnection()
+    if websocket is None:
+        raise RuntimeError("No active ESP32 WebSocket connection.")
     print("▶ Streaming audio...")
 
     # Tell ESP to start playback

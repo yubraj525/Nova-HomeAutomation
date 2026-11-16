@@ -3,18 +3,11 @@ import asyncio
 import uvicorn
 import websockets
 from fastapi import FastAPI
-from app.agent.Agent import Agent
-from app.agent.ToolRouter import ToolRouter
-from app.agent.pending_manager import PendingRequests
 from app.agent.registery import ToolRegistry
 from app.agent.tools.calculator import CalculatorTool
 from app.agent.tools.currenTime import GetTimeTool
-from app.audio.player import download_and_play
+from app.core.runtime import NovaRuntime
 from config.config import PORT_API, PORT_WS
-from app.tts.speak import speak
-# Load model once at startup
-from app.audio.local_transport import LocalAudioTransport
-from app.communication.websocket_transport import WebSocketAudioTransport
 app = FastAPI()
 
 
@@ -104,34 +97,9 @@ def create_tool_registry():
     return registry
 
 async def main():
-    # 1. Initialize shared dependencies
-    registry = create_tool_registry()
-    print("Tool registry created.")
-
-    request_pending = PendingRequests()
-
-    router = ToolRouter(registry, request_pending)
-    print("Tool router created.")
-
-    # 2. Initialize ONE agent instance
-    agent = Agent(registry, router)
-    print("Agent initialized.")
-
-    # 3. Initialize TTS
-    from app.tts.nepanglish_tts import get_synthesizer
-    synthesizer = get_synthesizer()
-
-    # 4. Initialize audio transport
-    transport = LocalAudioTransport()
-
-    # 5. Initialize ProcessAudio and inject dependencies
-    from app.pipeline.process_audio import ProcessAudio
-
-    process_audio = ProcessAudio(
-        synthesizer,
-        transport,
-        agent
-    )
+    runtime = NovaRuntime()
+    await runtime.initialize(create_tool_registry())
+    print("NOVA runtime initialized.")
 
     # 6. WebSocket handler
     from app.communication.websocket import handle_client
@@ -139,10 +107,10 @@ async def main():
     async def ws_handler(websocket):
         await handle_client(
             websocket,
-            process_audio,
-            registry,
-            request_pending,
-            router
+            runtime.session_manager,
+            runtime.registry,
+            runtime.pending_requests,
+            runtime.router,
         )
 
     # 7. Start servers
@@ -163,8 +131,11 @@ async def main():
     print(f"WebSocket running on port {PORT_WS}")
     print(f"API running on port {PORT_API}")
 
-    async with ws_server:
-        await api_server.serve()
+    try:
+        async with ws_server:
+            await api_server.serve()
+    finally:
+        await runtime.shutdown()
 
 
 if __name__ == "__main__":

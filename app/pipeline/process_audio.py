@@ -1,16 +1,22 @@
 import asyncio
-import os
-from app.audio.queuey import AudioQueue
-from app.llm.ollama import generate_local_async
-from app.pipeline.process_transcript import handle_command
-
-# from app.tts.tts_engine import pause_music, play_audio, resume_music, stop_music, text_to_speech
-from app.llm.groq import groq_llm_json
-from app.audio.player import download_and_play
-from app.tts.tts_engine import synthesize_to_queue
-from app.tts.tts_kokoro_english import stream_tts
-from app.audio.local_transport import LocalAudioTransport
+import logging
 from app.tts.speak import speak
+
+
+logger = logging.getLogger(__name__)
+
+
+async def _run_blocking_safely(function, *args):
+    """Wait for a non-cancellable worker before releasing shared model locks."""
+    task = asyncio.create_task(asyncio.to_thread(function, *args))
+    try:
+        return await asyncio.shield(task)
+    except asyncio.CancelledError:
+        try:
+            await task
+        except Exception:
+            logger.exception("Blocking audio worker failed while its session was closing")
+        raise
 
 
 def _transcribe(audio_path: str = "data/output_audio/speech.wav") -> str:
@@ -34,16 +40,37 @@ def _transcribe(audio_path: str = "data/output_audio/speech.wav") -> str:
 
 class ProcessAudio:
 
-    def __init__(self, synthesizer, transport,agent):
+    def __init__(
+        self,
+        synthesizer,
+        transport,
+        agent,
+        session_id: str | None = None,
+        websocket=None,
+        stt_lock: asyncio.Lock | None = None,
+        output_lock: asyncio.Lock | None = None,
+        coordinator=None,
+        speaker=None,
+    ):
         self._synthesizer = synthesizer
         self._transport = transport
         self._agent = agent
+        self.agent = agent
+        self.session_id = session_id
+        self.websocket = websocket
+        self._turn_lock = asyncio.Lock()
+        self._stt_lock = stt_lock or asyncio.Lock()
+        self._output_lock = output_lock or asyncio.Lock()
+        self.coordinator = coordinator
+        self.speaker = speaker
 
-    async def process_audio(self):
+    async def process_audio(self, audio_path: str = "data/output_audio/speech.wav"):
+        async with self._turn_lock:
+            await self._process_audio_turn(audio_path)
 
-        from app.tts.nepanglish_tts import get_synthesizer
-
-        text = _transcribe()  ## for test il be passing direct from params
+    async def _process_audio_turn(self, audio_path: str):
+        async with self._stt_lock:
+            text = await _run_blocking_safely(_transcribe, audio_path)
         #  text = "What is the capital of Nepal?"
         print(f"Transcribed text: {text}")
         if not text or len(text.strip()) < 2:
@@ -51,15 +78,32 @@ class ProcessAudio:
             return
         
 
-        response = await asyncio.create_task(self._agent.run(text))
-        print(f"Parsed response: {response}")
+        if self.coordinator is not None:
+            await self.coordinator.submit(text, source_session_id=self.session_id)
+        else:
+            response = await self._agent.run(text)
+            print(f"Parsed response: {response}")
 
-        # 1. Speak the response if present
-        # reply = response.get("response", "")
-        if response.strip():
+            # Compatibility path for callers that still construct ProcessAudio
+            # directly. The application runtime routes through SpeakerManager.
+            if response.strip():
 
-            print(f"Nova says: {response}")
-            await speak(response, self._transport, self._synthesizer)
+                print(f"Nova says: {response}")
+                if self.speaker is not None:
+                    await self.speaker.say(response, task_id=None)
+                else:
+                    async with self._output_lock:
+                        speech_task = asyncio.create_task(
+                            speak(response, self._transport, self._synthesizer)
+                        )
+                        try:
+                            await asyncio.shield(speech_task)
+                        except asyncio.CancelledError:
+                            try:
+                                await speech_task
+                            except Exception:
+                                logger.exception("TTS playback failed while its session was closing")
+                            raise
 
         # 2. Handle commands (Music, Lights, etc.)
         # if response.get('type') == 'command':
@@ -94,12 +138,12 @@ class ProcessAudio:
         #     await play_audio(file)
 
         print("Pipeline finished, triggering next steps...")
-        try:
+        if self.websocket is not None:
+            await self.websocket.send("start_stream")
+        else:
             from app.communication.websocket import send_websocket_message
 
             await send_websocket_message("start_stream")
-        except Exception as e:
-            print(f"Error sending start_stream: {e}")
 
 
 # # //synchronize the queue join method with the AudioQueue class in queuey.py to ensure proper task completion handling.

@@ -12,8 +12,6 @@ async def speak(
 ):
     queue = AudioQueue()
 
-    await transport.start()
-
     producer = asyncio.create_task(
         synthesize_to_queue(
             text,
@@ -39,15 +37,13 @@ async def speak(
     finally:
         print("[AUDIO] finishing playback")
         
-        ##causes  a error on a response from the websocket client, so commented out for now
-        # print(f"[AUDIO] ending audio playback on {transport._get_ws()}")
-        # await transport.end()
-
         consumer.cancel()
 
         try:
             await consumer
         except asyncio.CancelledError:
             pass
+
+        await transport.end()
 
         print("[AUDIO] playback finished")

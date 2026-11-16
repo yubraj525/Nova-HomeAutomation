@@ -211,6 +211,7 @@
 
 # ------------------------------- this do wokrk but gen a twice long audio file
 import asyncio
+import threading
 import numpy as np
 
 from app.audio.chunk import AudioChunk
@@ -240,7 +241,11 @@ def synthesize_to_chunks(text: str, synth=None):
 
         chunk = AudioChunk(
             data=pcm.tobytes(),
-            sample_rate=22050,
+            sample_rate=(
+                synth.sample_rate_for(text)
+                if hasattr(synth, "sample_rate_for")
+                else synth.sample_rate
+            ),
             channels=1,
             sample_width=2,
             sequence=sequence,
@@ -262,18 +267,29 @@ from app.audio.queuey import AudioQueue
 async def synthesize_to_queue(text: str, queue: AudioQueue,synth=None):
 
     loop = asyncio.get_running_loop()
+    stopped = threading.Event()
 
     def produce():
 
         for chunk in synthesize_to_chunks(text,synth=synth):
+            if stopped.is_set():
+                break
 
             future = asyncio.run_coroutine_threadsafe(
                 queue.put(chunk),
                 loop,
             )
 
-            # Wait until chunk is actually inserted
-            future.result()
+            # Stop polling when this individual speech request is cancelled.
+            while not stopped.is_set():
+                try:
+                    future.result(timeout=0.1)
+                    break
+                except TimeoutError:
+                    continue
+            if stopped.is_set():
+                future.cancel()
+                break
 
             print(
                 f"[TTS] queued "
@@ -282,7 +298,33 @@ async def synthesize_to_queue(text: str, queue: AudioQueue,synth=None):
                 f"queue={queue.qsize()}"
             )
 
-    await asyncio.to_thread(produce)
+    task = asyncio.create_task(asyncio.to_thread(produce))
+    try:
+        await task
+    except asyncio.CancelledError:
+        stopped.set()
+        raise
+
+
+def _synthesize_to_wav(text: str) -> str:
+    """Compatibility helper for the existing Nepali WAV smoke test/API."""
+    import wave
+    from pathlib import Path
+
+    from app.tts.nepanglish_tts import get_synthesizer
+
+    synth = get_synthesizer()
+    chunks = list(synth.synthesize_stream(text))
+    samples = np.concatenate(chunks) if chunks else np.array([], dtype=np.float32)
+    pcm = (np.clip(samples, -1.0, 1.0) * 32767).astype(np.int16).tobytes()
+    output = Path(__file__).resolve().parents[2] / "data" / "output_audio" / "response.wav"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(output), "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(synth.sample_rate)
+        wav_file.writeframes(pcm)
+    return str(output)
 
 
 
